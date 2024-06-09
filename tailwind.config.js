@@ -6,6 +6,15 @@ module.exports = {
       colors: {
         text: {
           DEFAULT: '#FFFFFF',
+          hovered: '#53d7ff',
+          secondary: '#DCDCDC',
+          success: '#15dc07',
+          error: '#f3645b',
+        },
+        input: {
+          background: '#FFFFFF80',
+          border: '#C8C8CC',
+          placeholder: '#0000009C',
         },
       },
       fontFamily: {

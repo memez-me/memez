@@ -1,5 +1,5 @@
 import { defaultWagmiConfig } from '@web3modal/wagmi/react/config';
-import { fraxtal, fraxtalTestnet } from 'wagmi/chains';
+import { fraxtal, fraxtalTestnet, hardhat } from 'wagmi/chains';
 
 export const projectId = process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID;
 
@@ -12,8 +12,11 @@ const metadata = {
   icons: ['https://qwadratic.github.io/memez/icon.png'],
 };
 
-// Create wagmiConfig
-const chains = [fraxtal, fraxtalTestnet] as const;
+const chains = [
+  fraxtal,
+  ...(process.env.NODE_ENV === 'development' ? [fraxtalTestnet, hardhat] : []),
+] as const;
+
 export const config = defaultWagmiConfig({
   chains,
   projectId,

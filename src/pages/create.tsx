@@ -68,12 +68,12 @@ export function Create() {
   );
 
   const deployedMemeCoinAddress = useMemo(
-    () => transactionMemeCoinDeployedEvent?.args?.addr ?? null,
+    () => transactionMemeCoinDeployedEvent?.args?.memecoin ?? null,
     [transactionMemeCoinDeployedEvent],
   );
 
   const simulationError = useMemo(
-    () => (error ? (error.cause as any).reason ?? error.message : null),
+    () => (error ? (error.cause as any)?.reason ?? error.message : null),
     [error],
   );
 

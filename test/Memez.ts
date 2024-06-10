@@ -6,13 +6,13 @@ import { expect } from 'chai';
 import hre, { ignition, viem } from 'hardhat';
 import { getAddress, parseEther, getContract, Address } from 'viem';
 import MemezFactory from '../ignition/modules/MemezFactory';
+import MockERC20 from '../ignition/modules/MockERC20';
 import { fraxswapRouterAbi } from '../contracts/fraxswapRouter.abi';
 import { fraxswapFactoryAbi } from '../contracts/fraxswapFactory.abi';
 
 describe('Memez', function () {
   async function deployMemezFactory() {
     const { memezFactory } = await ignition.deploy(MemezFactory);
-    console.log(typeof memezFactory);
     return memezFactory;
   }
 
@@ -29,6 +29,23 @@ describe('Memez', function () {
     );
   }
 
+  async function deployMockERC20(
+    name: string = 'MockERC20',
+    symbol: string = 'MERC20',
+    cap: bigint = 0n,
+  ) {
+    const { mockERC20 } = await ignition.deploy(MockERC20, {
+      parameters: {
+        MockERC20: {
+          name,
+          symbol,
+          cap,
+        },
+      },
+    });
+    return mockERC20;
+  }
+
   describe('Deployment', function () {
     it('Should succesfully deploy formula and token factory', async function () {
       const factory = await loadFixture(deployMemezFactory);
@@ -41,6 +58,7 @@ describe('Memez', function () {
 
     it('Should be able to deploy MemeCoin', async function () {
       const factory = await loadFixture(deployMemezFactory);
+      const [sender1] = await viem.getWalletClients();
       const memecoin = await deployMemeCoin(
         factory,
         'Test',
@@ -50,11 +68,39 @@ describe('Memez', function () {
       const events = await factory.getEvents.MemeCoinDeployed();
 
       expect(events.length).to.be.equal(1);
-      expect(events[0].args.addr).to.be.equal(memecoin.address);
+      expect(events[0].args.creator?.toLowerCase()).to.be.equal(
+        sender1.account.address.toLowerCase(),
+      );
+      expect(events[0].args.memecoin).to.be.equal(memecoin.address);
 
       const actualName = await memecoin.read.name();
 
       expect(actualName).to.be.equal('Test');
+    });
+
+    it('Should check MemeCoin legitimacy', async function () {
+      const legitFactory = await loadFixture(deployMemezFactory);
+      const nonLegitFactory = await loadFixture(deployMemezFactory);
+      const legitMemecoin = await deployMemeCoin(
+        legitFactory,
+        'Real Memecoin',
+        'RMC',
+        parseEther('0.003'),
+      );
+
+      const nonLegitMemecoin = await deployMockERC20(
+        'Fake Memecoin',
+        'FMC',
+        parseEther('0.003'),
+      );
+
+      expect(await legitFactory.read.isMemeCoinLegit([legitMemecoin.address]))
+        .to.be.true;
+      expect(
+        await legitFactory.read.isMemeCoinLegit([nonLegitMemecoin.address]),
+      ).to.be.false;
+      expect(await legitFactory.read.isMemeCoinLegit([nonLegitFactory.address]))
+        .to.be.false;
     });
 
     it('Should only be able to deploy the same tokens once', async function () {

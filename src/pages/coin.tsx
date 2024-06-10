@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import PageHead from '../components/PageHead';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { useMemeCoinConfig } from '../hooks';
+import { useMemeCoinConfig, useMemezFactoryConfig } from '../hooks';
 import { Address, formatEther, isAddress, zeroAddress } from 'viem';
 import { useReadContracts } from 'wagmi';
 
@@ -17,10 +17,16 @@ export function Coin() {
     [router],
   );
 
+  const memezFactoryConfig = useMemezFactoryConfig();
   const memeCoinConfig = useMemeCoinConfig(memeCoinAddress);
 
   const { data, isError } = useReadContracts({
     contracts: [
+      {
+        ...memezFactoryConfig,
+        functionName: 'isMemeCoinLegit',
+        args: [memeCoinAddress],
+      },
       {
         ...memeCoinConfig,
         functionName: 'name',
@@ -40,8 +46,8 @@ export function Coin() {
     <>
       <PageHead
         title="memez"
-        subtitle={data?.[1]?.result ?? 'Memecoin'}
-        description={`memez ${data?.[0]?.result} memecoin`}
+        subtitle={data?.[2]?.result ?? 'Memecoin'}
+        description={`memez ${data?.[1]?.result} memecoin`}
       />
       <div className="flex flex-col h-full justify-center items-center">
         <Link
@@ -56,18 +62,21 @@ export function Coin() {
           {data && data.every((d) => d.status === 'success') && !isError ? (
             <>
               <p>
-                Token name: <span>{data[0].result}</span>
+                Token name: <span>{data[1].result}</span>
               </p>
               <p>
-                Token symbol: <span>{data[1].result}</span>
+                Token symbol: <span>{data[2].result}</span>
               </p>
               <p>
-                Token cap: <span>{formatEther(data[2].result ?? 0n)}</span>
+                Token cap: <span>{formatEther(data[3].result ?? 0n)}</span>
               </p>
             </>
           ) : (
             <p className="text-text-error">
-              Error: cannot get token information!
+              Error:
+              {data && data[0].status === 'success' && !data[0].result
+                ? ' token address is not legit!'
+                : ' cannot get token information!'}
             </p>
           )}
         </div>

@@ -78,7 +78,7 @@ export function Coin() {
   } = useSimulateContract({
     ...memeCoinConfig,
     functionName: 'mint',
-    value: parseEther(Number(amount ?? 0).toString()),
+    value: parseEther((amount ?? 0).toString()),
     query: {
       enabled: isBuy,
     },
@@ -91,7 +91,7 @@ export function Coin() {
   } = useSimulateContract({
     ...memeCoinConfig,
     functionName: 'retire',
-    args: [parseEther(Number(amount ?? 0).toString())],
+    args: [parseEther((amount ?? 0).toString())],
     query: {
       enabled: !isBuy,
     },
@@ -206,8 +206,14 @@ export function Coin() {
                     value={amount}
                     placeholder="Amount"
                     type="number"
+                    min={0}
+                    step={0.001}
                     disabled={isPending || isConfirming || isConfirmed}
-                    onChange={(e) => setAmount(e.target.value)}
+                    onChange={(e) =>
+                      setAmount(
+                        e.target.value.toString().replaceAll(/[^0-9.,]/g, ''),
+                      )
+                    }
                   />
                   <span className="font-extrabold self-center">
                     {isBuy ? 'ETH' : data[2].result}

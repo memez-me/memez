@@ -41,7 +41,7 @@ export function Create() {
   const { data, error } = useSimulateContract({
     ...memezFactoryConfig,
     functionName: 'deploy',
-    args: [name, symbol, parseEther(Number(cap ?? 0).toString())],
+    args: [name, symbol, parseEther((cap ?? 0).toString())],
     query: {
       enabled: !isValidationError,
     },
@@ -121,9 +121,11 @@ export function Create() {
             placeholder="Cap"
             type="number"
             step={1}
-            max={1e16}
+            max={1000}
             isError={!!capError}
-            onChange={(e) => setCap(e.target.value)}
+            onChange={(e) =>
+              setCap(e.target.value.toString().replaceAll(/[^0-9.,]/g, ''))
+            }
           />
           <Button
             disabled={isAnyError || !data?.request || isPending || isConfirming}

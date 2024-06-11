@@ -16,7 +16,7 @@ export function Create() {
   const router = useRouter();
   const [name, setName] = useState('');
   const [symbol, setSymbol] = useState('');
-  const [cap, setCap] = useState<string | number>(1000000);
+  const [cap, setCap] = useState<string | number>(10);
 
   const memezFactoryConfig = useMemezFactoryConfig();
 
@@ -120,7 +120,7 @@ export function Create() {
             value={cap}
             placeholder="Cap"
             type="number"
-            step={1000}
+            step={1}
             max={1e16}
             isError={!!capError}
             onChange={(e) => setCap(e.target.value)}

@@ -1,7 +1,7 @@
 import { ChangeEvent, HTMLInputTypeAttribute } from 'react';
 
 type TextInputProps = {
-  value: string | number;
+  value?: string | number;
   onChange?: (event: ChangeEvent<HTMLInputElement>) => void;
   placeholder?: string | undefined;
   className?: string;
@@ -11,6 +11,7 @@ type TextInputProps = {
   min?: number;
   max?: number;
   step?: number;
+  accept?: string;
 };
 
 function TextInput({
@@ -24,6 +25,7 @@ function TextInput({
   min = 0,
   max = undefined,
   step = 1,
+  accept = undefined,
 }: TextInputProps) {
   return (
     <input
@@ -38,6 +40,7 @@ function TextInput({
       min={type === 'number' ? min : undefined}
       max={type === 'number' ? max : undefined}
       step={type === 'number' ? step : undefined}
+      accept={accept}
     />
   );
 }

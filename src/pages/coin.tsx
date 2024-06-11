@@ -80,7 +80,7 @@ export function Coin() {
     functionName: 'mint',
     value: parseEther((amount ?? 0).toString()),
     query: {
-      enabled: isBuy,
+      enabled: isBuy && !!amount,
     },
   });
 
@@ -93,7 +93,7 @@ export function Coin() {
     functionName: 'retire',
     args: [parseEther((amount ?? 0).toString())],
     query: {
-      enabled: !isBuy,
+      enabled: !isBuy && !!amount,
     },
   });
 
@@ -224,7 +224,8 @@ export function Coin() {
                     !!currentSimulationError ||
                     isPending ||
                     isConfirming ||
-                    isConfirmed
+                    isConfirmed ||
+                    !amount
                   }
                   onClick={
                     isBuy

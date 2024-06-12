@@ -46,32 +46,43 @@ contract MemeCoin is ERC20 {
     );
 
     constructor(address formula_, string memory name, string memory symbol, uint256 cap_) payable ERC20(name, symbol) {
+        require(cap_ > 0, 'Positive cap expected');
+
         formula = formula_;
         cap = cap_;
     }
 
-    function _listing() public  {
-        uint amountToken = reserveBalance() / price();
+    modifier notListed() {
+        require(cap >= 0, 'Already listed');
+        _;
+    }
 
-        console.log(IFraxswapRouter(fraxswapRouter).quote(1, amountToken, address(this).balance));
+    function _listing() internal {
+        uint amountToken = cap / price();
+
+        console.log(IFraxswapRouter(fraxswapRouter).quote(1, amountToken, cap));
         console.log(price());
 
         _mint(address(this), amountToken);
         _approve(address(this), fraxswapRouter, amountToken);
 
         IFraxswapRouter(fraxswapRouter).addLiquidityETH{
-            value: address(this).balance
+            value: cap
         }(
             address(this),
             amountToken,
             amountToken,
-            address(this).balance,
+            cap,
             address(0x0000000000000000000000000000000000000000),
             block.timestamp
         );
 
-        
-        
+        if (address(this).balance > 0) {
+            (bool success, ) = msg.sender.call{value: address(this).balance}('');
+            require(success, 'Leftover transfer failed');
+        }
+
+        cap = 0;
     }
 
     /// @notice Returns reserve balance
@@ -87,18 +98,25 @@ contract MemeCoin is ERC20 {
 
     /// @notice Mints tokens pertaining to the deposited amount of reserve tokens
     /// @dev Calls mint on token contract, purchaseTargetAmount on formula contract
-    function mint() public payable virtual {
-        uint256 amount = calculatePurchaseReturn(msg.value);
+    function mint() public payable virtual notListed {
+        uint256 value = msg.value;
+        if (reserveBalance() >= cap) {
+            uint256 leftover = reserveBalance() - cap;
+            value = value - leftover;
+        }
+
+        uint256 amount = calculatePurchaseReturn(value);
         _mint(_msgSender(), amount);
+        emit Mint(_msgSender(), amount);
+
         if (reserveBalance() >= cap) {
             _listing();
         }
-        emit Mint(_msgSender(), amount);
     }
 
     /// @notice Retires tokens of given amount, and transfers pertaining reserve tokens to account
     /// @param amount The amount of tokens being retired
-    function retire(uint256 amount) external virtual {
+    function retire(uint256 amount) external virtual notListed {
         require(totalSupply() - amount >= 0, "Requested Retire Amount Exceeds Supply");
         require(amount <= balanceOf(_msgSender()), "Requested Retire Amount Exceeds Owned");
         uint256 liquidity = calculateSaleReturn(amount);

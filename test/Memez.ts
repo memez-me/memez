@@ -78,29 +78,11 @@ describe('Memez', function () {
       expect(actualName).to.be.equal('Test');
     });
 
-    it('Should check MemeCoin legitimacy', async function () {
-      const legitFactory = await loadFixture(deployMemezFactory);
-      const nonLegitFactory = await loadFixture(deployMemezFactory);
-      const legitMemecoin = await deployMemeCoin(
-        legitFactory,
-        'Real Memecoin',
-        'RMC',
-        parseEther('0.003'),
-      );
+    it('Should not deploy MemeCoin with 0 cap', async function () {
+      const factory = await loadFixture(deployMemezFactory);
+      const zeroCapDeployment = deployMemeCoin(factory, 'Test', 'TST', 0n);
 
-      const nonLegitMemecoin = await deployMockERC20(
-        'Fake Memecoin',
-        'FMC',
-        parseEther('0.003'),
-      );
-
-      expect(await legitFactory.read.isMemeCoinLegit([legitMemecoin.address]))
-        .to.be.true;
-      expect(
-        await legitFactory.read.isMemeCoinLegit([nonLegitMemecoin.address]),
-      ).to.be.false;
-      expect(await legitFactory.read.isMemeCoinLegit([nonLegitFactory.address]))
-        .to.be.false;
+      expect(zeroCapDeployment).to.be.revertedWith('Positive cap expected');
     });
 
     it('Should only be able to deploy the same tokens once', async function () {
@@ -161,7 +143,7 @@ describe('Memez', function () {
         const client = await viem.getPublicClient();
       });
 
-      it('Selling should give eth back. The amount of eth shold be close to originally invested if the sell happens immediately', async function () {
+      it('Selling should give eth back. The amount of eth should be close to originally invested if the sell happens immediately', async function () {
         const [sender] = await viem.getWalletClients();
         const factory = await loadFixture(deployMemezFactory);
         const memecoin = await deployMemeCoin(
@@ -273,6 +255,103 @@ describe('Memez', function () {
         const token2 = (createdPairs[createdPairs.length - 1] as any).args[1];
         expect(token1).to.be.equal(memecoin.address);
         expect(token2).to.be.equal(weth);
+      });
+    });
+    describe('Unexpected usage checking', async function () {
+      it('Should check MemeCoin legitimacy', async function () {
+        const legitFactory = await loadFixture(deployMemezFactory);
+        const nonLegitFactory = await loadFixture(deployMemezFactory);
+        const legitMemecoin = await deployMemeCoin(
+          legitFactory,
+          'Real Memecoin',
+          'RMC',
+          parseEther('0.003'),
+        );
+
+        const nonLegitMemecoin = await deployMockERC20(
+          'Fake Memecoin',
+          'FMC',
+          parseEther('0.003'),
+        );
+
+        expect(await legitFactory.read.isMemeCoinLegit([legitMemecoin.address]))
+          .to.be.true;
+        expect(
+          await legitFactory.read.isMemeCoinLegit([nonLegitMemecoin.address]),
+        ).to.be.false;
+        expect(
+          await legitFactory.read.isMemeCoinLegit([nonLegitFactory.address]),
+        ).to.be.false;
+      });
+
+      it('Should sent leftover back on reaching cap', async function () {
+        const publicClient = await viem.getPublicClient();
+        const [sender] = await viem.getWalletClients();
+        const factory = await loadFixture(deployMemezFactory);
+        const cap = parseEther('0.01');
+        const memecoin = await deployMemeCoin(factory, 'Test', 'TST', cap);
+
+        const balanceBefore = await publicClient.getBalance({
+          address: sender.account.address,
+        });
+        const hash = await memecoin.write.mint({
+          value: cap + parseEther('0.02'),
+          account: sender.account,
+        });
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+        const gasSpent = receipt.gasUsed * receipt.effectiveGasPrice;
+        const balanceAfter = await publicClient.getBalance({
+          address: sender.account.address,
+        });
+
+        expect(balanceBefore - gasSpent - cap).to.be.eq(balanceAfter);
+      });
+
+      it('Should not mint after listing', async function () {
+        const [sender] = await viem.getWalletClients();
+        const factory = await loadFixture(deployMemezFactory);
+        const cap = parseEther('0.01');
+        const memecoin = await deployMemeCoin(factory, 'Test', 'TST', cap);
+
+        await memecoin.write.mint({
+          value: cap,
+          account: sender.account,
+        });
+
+        const mintAfterListing = memecoin.write.mint({
+          value: parseEther('0.01'),
+          account: sender.account,
+        });
+
+        expect(mintAfterListing).to.be.revertedWith('Already listed');
+      });
+
+      it('Should not retire after listing', async function () {
+        const [sender] = await viem.getWalletClients();
+        const factory = await loadFixture(deployMemezFactory);
+        const cap = parseEther('0.01');
+        const memecoin = await deployMemeCoin(factory, 'Test', 'TST', cap);
+
+        await memecoin.write.mint({
+          value: cap,
+          account: sender.account,
+        });
+
+        const mints = await memecoin.getEvents.Mint(
+          {},
+          {
+            fromBlock: 0n,
+          },
+        );
+
+        const retireAfterListing = memecoin.write.retire(
+          [mints[0].args.amount!],
+          {
+            account: sender.account,
+          },
+        );
+
+        expect(retireAfterListing).to.be.revertedWith('Already listed');
       });
     });
   });

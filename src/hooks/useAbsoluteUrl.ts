@@ -1,6 +1,6 @@
 import { useRouter } from 'next/router';
 
-const ORIGIN = 'https://qwadratic.github.io/memez';
+const ORIGIN = 'https://memez.me';
 
 export const useAbsoluteUrl = () => {
   const { basePath, locale } = useRouter();

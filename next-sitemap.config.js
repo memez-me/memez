@@ -1,6 +1,6 @@
 /** @type {import("next-sitemap").IConfig} */
 const config = {
-  siteUrl: 'https://qwadratic.github.io/memez',
+  siteUrl: 'https://memez.me',
   generateRobotsTxt: true,
   generateIndexSitemap: false,
   output: 'export',

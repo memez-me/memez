@@ -145,7 +145,7 @@ export function Coin() {
         subtitle={data?.[2]?.result ?? 'Memecoin'}
         description={`memez ${data?.[1]?.result} memecoin`}
       />
-      <div className="flex flex-col h-full justify-center items-center">
+      <div className="flex flex-col justify-center items-center">
         <Link
           href="/"
           passHref

@@ -94,7 +94,7 @@ export function Create() {
         subtitle="Create memecoin"
         description="Create your memecoin!"
       />
-      <div className="flex flex-col h-full justify-center items-center">
+      <div className="flex flex-col justify-center items-center">
         <Link
           href="/"
           passHref

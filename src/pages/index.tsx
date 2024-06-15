@@ -6,7 +6,7 @@ export function Index() {
   return (
     <>
       <PageHead title="memez" description="memez memecoins app" />
-      <div className="flex flex-col h-full justify-center items-center">
+      <div className="flex flex-col justify-center items-center">
         <Link
           href="/create"
           passHref

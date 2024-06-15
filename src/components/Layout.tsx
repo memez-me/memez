@@ -49,7 +49,7 @@ export function Layout({ children }: { children: ReactNode }) {
             )}
           </div>
         </div>
-        <div className="flex flex-col p-4 md:p-8">{children}</div>
+        <div className="flex flex-col p-4 md:p-8 overflow-auto">{children}</div>
       </div>
       <div id="modals-container" />
     </>

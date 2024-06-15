@@ -64,7 +64,7 @@ export function Profile() {
         subtitle={nickname ?? profileAddress}
         description={`memez ${nickname ?? profileAddress} profile`}
       />
-      <div className="flex flex-col h-full justify-center items-center">
+      <div className="flex flex-col justify-center items-center">
         <Link
           href="/"
           passHref

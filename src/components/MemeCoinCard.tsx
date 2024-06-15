@@ -56,7 +56,7 @@ function MemeCoinCard({
               width={16}
               height={16}
             />{' '}
-            {creatorNickname ?? trimAddress(creatorAddress)}
+            {creatorNickname || trimAddress(creatorAddress)}
           </Link>
         </h3>
         <p className="text-main-light">

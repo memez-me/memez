@@ -265,7 +265,7 @@ export function Coin() {
                         width={16}
                         height={16}
                       />{' '}
-                      {ownerData[0] ?? trimAddress(data[6].result!)}
+                      {ownerData[0] || trimAddress(data[6].result!)}
                     </Link>
                   )}{' '}
                   {address === data[6].result && <i>(You)</i>}
@@ -276,15 +276,23 @@ export function Coin() {
                   Description: {isEditing ? description : data[7].result}
                 </p>
               )}
-              <p>
-                Token cap: <span>{formatEther(data[3].result ?? 0n)}</span>{' '}
-                <span className="font-bold">ETH</span>
-              </p>
-              <p>
-                Current cap:{' '}
-                <span>{formatEther(balanceData?.value ?? 0n)}</span>{' '}
-                <span className="font-bold">ETH</span>
-              </p>
+              {data[3].result && data[3].result > 0n ? (
+                <>
+                  <p>
+                    Token cap: <span>{formatEther(data[3].result ?? 0n)}</span>{' '}
+                    <span className="font-bold">ETH</span>
+                  </p>
+                  <p>
+                    Current cap:{' '}
+                    <span>{formatEther(balanceData?.value ?? 0n)}</span>{' '}
+                    <span className="font-bold">ETH</span>
+                  </p>
+                </>
+              ) : (
+                <p>
+                  Status: <b>Already listed</b>
+                </p>
+              )}
               <p>
                 Token supply: <span>{formatEther(data[4].result ?? 0n)}</span>{' '}
                 <span className="font-bold">{data[2].result}</span>

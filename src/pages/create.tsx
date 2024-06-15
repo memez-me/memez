@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import PageHead from '../components/PageHead';
 import Link from 'next/link';
 import TextInput from '../components/TextInput';
-import Button from '../components/Button';
+import { PrimaryButton } from '../components/buttons';
 import { useMemezFactoryConfig } from '../hooks';
 import {
   useSimulateContract,
@@ -99,7 +99,7 @@ export function Create() {
           href="/"
           passHref
           rel="noreferrer"
-          className="hover:font-bold hover:text-text-hovered"
+          className="disabled:shadow hover:font-bold hover:text-main-light focus:text-main-light active:text-main-shadow"
         >
           [go back]
         </Link>
@@ -127,19 +127,19 @@ export function Create() {
               setCap(e.target.value.toString().replaceAll(/[^0-9.,]/g, ''))
             }
           />
-          <Button
+          <PrimaryButton
             disabled={isAnyError || !data?.request || isPending || isConfirming}
             onClick={() => writeContract(data!.request)}
           >
             {isPending || isConfirming
               ? 'Creating memecoin...'
               : 'Create memecoin'}
-          </Button>
+          </PrimaryButton>
           {isConfirmed && (
-            <p className="text-text-success">Memecoin created!</p>
+            <p className="text-second-success">Memecoin created!</p>
           )}
           {isAnyError && (
-            <p className="text-text-error">
+            <p className="text-second-error">
               Error: {nameError || symbolError || capError || simulationError}
             </p>
           )}

@@ -17,6 +17,11 @@ createWeb3Modal({
   enableAnalytics: true,
   enableOnramp: true,
   themeMode: 'dark',
+  themeVariables: {
+    '--w3m-font-family': '"Roboto Mono", consolas, monospace',
+    '--w3m-accent': '#92FFCB',
+    '--w3m-border-radius-master': '0.75px',
+  },
 });
 
 export default function Web3Provider({

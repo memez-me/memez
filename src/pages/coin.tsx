@@ -12,8 +12,9 @@ import {
   useWaitForTransactionReceipt,
   useWriteContract,
 } from 'wagmi';
-import Button from '../components/Button';
+import { PrimaryButton } from '../components/buttons';
 import TextInput from '../components/TextInput';
+import BuySellSwitch from '../components/BuySellSwitch';
 
 export function Coin() {
   const { address } = useAccount();
@@ -149,11 +150,11 @@ export function Coin() {
           href="/"
           passHref
           rel="noreferrer"
-          className="hover:font-bold hover:text-text-hovered"
+          className="disabled:shadow hover:font-bold hover:text-main-light focus:text-main-light active:text-main-shadow"
         >
           [go back]
         </Link>
-        <div className="flex flex-col gap-4 w-full max-w-[420px] mt-6">
+        <div className="flex flex-col gap-4 w-full max-w-[420px] mt-6 text-body tracking-body">
           {data && data.every((d) => d.status === 'success') && !isError ? (
             <>
               <p>
@@ -182,24 +183,7 @@ export function Coin() {
                 </p>
               )}
               <div className="flex flex-col gap-4">
-                <div className="flex flex-row gap-4">
-                  <Button
-                    className="text-text-success border-text-success flex-1"
-                    onClick={() => setIsBuy(true)}
-                    disabled={isBuy || isPending || isConfirming || isConfirmed}
-                  >
-                    Buy
-                  </Button>
-                  <Button
-                    className="text-text-error border-text-error flex-1"
-                    onClick={() => setIsBuy(false)}
-                    disabled={
-                      !isBuy || isPending || isConfirming || isConfirmed
-                    }
-                  >
-                    Sell
-                  </Button>
-                </div>
+                <BuySellSwitch isBuy={isBuy} onChange={setIsBuy} />
                 <div className="flex flex-row gap-2">
                   <TextInput
                     className="flex-1"
@@ -219,7 +203,7 @@ export function Coin() {
                     {isBuy ? 'ETH' : data[2].result}
                   </span>
                 </div>
-                <Button
+                <PrimaryButton
                   disabled={
                     !!currentSimulationError ||
                     isPending ||
@@ -240,19 +224,19 @@ export function Coin() {
                     : isPending || isConfirming
                       ? 'Selling...'
                       : 'Sell'}
-                </Button>
+                </PrimaryButton>
                 {isConfirmed && (
-                  <p className="text-text-success">Transaction confirmed!</p>
+                  <p className="text-second-success">Transaction confirmed!</p>
                 )}
                 {!!simulationErrorMessage && (
-                  <p className="text-text-error">
+                  <p className="text-second-error">
                     Error: {simulationErrorMessage}
                   </p>
                 )}
               </div>
             </>
           ) : (
-            <p className="text-text-error">
+            <p className="text-second-error">
               Error:
               {data && data[0].status === 'success' && !data[0].result
                 ? ' token address is not legit!'

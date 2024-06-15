@@ -11,7 +11,7 @@ export function Index() {
           href="/create"
           passHref
           rel="noreferrer"
-          className="hover:font-bold hover:text-text-hovered"
+          className="disabled:shadow hover:font-bold hover:text-main-light focus:text-main-light active:text-main-shadow"
         >
           [create memecoin]
         </Link>

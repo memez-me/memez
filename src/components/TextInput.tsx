@@ -29,9 +29,9 @@ function TextInput({
 }: TextInputProps) {
   return (
     <input
-      className={`px-3 py-1.5 bg-input-background placeholder:text-input-placeholder border border-input-border ${
-        isError ? 'border-text-error' : ''
-      } rounded-lg text-base font-normal text-text disabled:opacity-50 enabled:focus:placeholder:opacity-50 enabled:active:placeholder:opacity-50 enabled:focus:border-text-hovered enabled:active:border-text-hovered ${className}`}
+      className={`px-x2 py-x1 h-x6 bg-main-shadow font-medium text-title text-main-accent placeholder:text-main-gray border-2 border-main-accent ${
+        isError ? 'border-second-error' : ''
+      } rounded-x1 disabled:bg-main-black disabled:bg-opacity-30 disabled:border-main-gray disabled:text-main-shadow enabled:focus:placeholder:opacity-50 enabled:active:placeholder:opacity-50 enabled:focus:border-main-light enabled:active:border-main-light ${className}`}
       type={type}
       disabled={disabled}
       value={value}

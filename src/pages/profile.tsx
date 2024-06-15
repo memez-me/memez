@@ -1,11 +1,12 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import PageHead from '../components/PageHead';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useAccount, useSignTypedData } from 'wagmi';
 import { useRouter } from 'next/router';
 import { Address, Hash, isAddress, zeroAddress } from 'viem';
 import { trimAddress } from '../utils';
-import Button from '../components/Button';
+import { PrimaryButton } from '../components/buttons';
 import TextInput from '../components/TextInput';
 import { keccak256 } from 'ethereumjs-util/dist/hash';
 
@@ -68,25 +69,28 @@ export function Profile() {
           href="/"
           passHref
           rel="noreferrer"
-          className="hover:font-bold hover:text-text-hovered"
+          className="disabled:shadow hover:font-bold hover:text-main-light focus:text-main-light active:text-main-shadow"
         >
           [go back]
         </Link>
-        <div className="flex flex-col gap-4 w-full max-w-[420px] mt-6">
+        <div className="flex flex-col gap-4 w-full max-w-[420px] mt-6 text-body tracking-body">
           {profileAddress !== zeroAddress ? (
             <>
               <div className="flex flex-row gap-2">
-                <img
+                <Image
+                  className="rounded-full object-contain"
                   src={profilePicture}
                   width={64}
                   height={64}
                   alt={`Profile picture of ${nickname}`}
                 />
                 <div className="flex flex-col gap-1">
-                  <h1 className="font-semibold">
+                  <h1 className="text-title font-bold">
                     {nickname || <i>No nickname</i>}
                   </h1>
-                  <h2>{trimAddress(profileAddress)}</h2>
+                  <h2 className="text-body-2 font-medium">
+                    {trimAddress(profileAddress)}
+                  </h2>
                 </div>
               </div>
               {isCurrent &&
@@ -114,21 +118,21 @@ export function Profile() {
                       }}
                       accept="image/*"
                     />
-                    <Button
-                      className="text-text-success border-text-success"
+                    <PrimaryButton
+                      className="text-second-success border-second-success"
                       onClick={saveChanges}
                     >
                       Save changes
-                    </Button>
+                    </PrimaryButton>
                   </>
                 ) : (
-                  <Button onClick={() => setIsEditing(true)}>
+                  <PrimaryButton onClick={() => setIsEditing(true)}>
                     Edit profile
-                  </Button>
+                  </PrimaryButton>
                 ))}
             </>
           ) : (
-            <p className="text-text-error">
+            <p className="text-second-error">
               Error: cannot parse profile address!
             </p>
           )}

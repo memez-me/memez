@@ -1,6 +1,6 @@
 import { MouseEvent, ReactNode, useCallback } from 'react';
 
-type ButtonProps = {
+export type ButtonProps = {
   onClick?: ((event: MouseEvent<HTMLButtonElement>) => void) | undefined;
   children: ReactNode;
   disabled?: boolean;
@@ -28,7 +28,7 @@ function Button({
       id={id}
       disabled={disabled}
       type="button"
-      className={`px-3 py-2 rounded-lg disabled:opacity-50 border-2 border-text enabled:focus:border-text-hovered enabled:active:border-text-hovered font-inter font-bold text-sm lg:text-base text-text enabled:hover:text-text-hovered enabled:focus:text-text-hovered enabled:active:text-text-hovered transition-all ${className}`}
+      className={`inline-flex gap-x1 flex-shrink-0 rounded-x1 items-center justify-center transition-all ${className}`}
       onClick={clickHandler}
     >
       {children}

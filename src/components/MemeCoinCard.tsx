@@ -40,7 +40,7 @@ function MemeCoinCard({
         width={128}
         height={128}
       />
-      <div className="flex flex-col w-[280px] overflow-auto">
+      <div className="flex flex-col w-[280px] max-h-[128px] overflow-auto">
         <h3 className="text-main-accent">
           Created by{' '}
           <Link

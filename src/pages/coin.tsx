@@ -272,7 +272,9 @@ export function Coin() {
                 </Link>
               </p>
               {(isEditing || data[7].result) && (
-                <p>Description: {isEditing ? description : data[7].result}</p>
+                <p className="max-h-x10 overflow-auto">
+                  Description: {isEditing ? description : data[7].result}
+                </p>
               )}
               <p>
                 Token cap: <span>{formatEther(data[3].result ?? 0n)}</span>{' '}

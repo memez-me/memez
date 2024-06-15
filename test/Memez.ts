@@ -4,7 +4,7 @@ import {
 } from '@nomicfoundation/hardhat-toolbox-viem/network-helpers';
 import { expect } from 'chai';
 import hre, { ignition, viem } from 'hardhat';
-import { getAddress, parseEther, getContract, Address } from 'viem';
+import { parseEther, getContract, Address } from 'viem';
 import MemezFactory from '../ignition/modules/MemezFactory';
 import MockERC20 from '../ignition/modules/MockERC20';
 import { fraxswapRouterAbi } from '../contracts/fraxswapRouter.abi';
@@ -22,10 +22,16 @@ describe('Memez', function () {
     symbol: string,
     cap: bigint,
   ) {
+    const [sender1] = await viem.getWalletClients();
     await factory.write.deploy([name, symbol, cap]);
     return await viem.getContractAt(
       'MemeCoin',
-      await factory.read.getAddress([name, symbol, cap]),
+      await factory.read.getAddress([
+        name,
+        symbol,
+        cap,
+        sender1.account.address,
+      ]),
     );
   }
 
@@ -82,7 +88,9 @@ describe('Memez', function () {
       const factory = await loadFixture(deployMemezFactory);
       const zeroCapDeployment = deployMemeCoin(factory, 'Test', 'TST', 0n);
 
-      expect(zeroCapDeployment).to.be.revertedWith('Positive cap expected');
+      await expect(zeroCapDeployment).to.be.revertedWith(
+        'Positive cap expected',
+      );
     });
 
     it('Should only be able to deploy the same tokens once', async function () {
@@ -99,8 +107,114 @@ describe('Memez', function () {
         'TST',
         parseEther('0.003'),
       );
-      expect(sameDeployment).to.be.revertedWith(
+      await expect(sameDeployment).to.be.revertedWith(
         'The token with such parameters has been already deployed',
+      );
+    });
+  });
+
+  describe('Account management', function () {
+    it('Should update account information', async function () {
+      const [sender1] = await viem.getWalletClients();
+      const factory = await loadFixture(deployMemezFactory);
+
+      const nickname = '*nickname*';
+      const profilePicture = '*profilePicture*';
+
+      await factory.write.updateAccountInfo([nickname, profilePicture], {
+        account: sender1.account,
+      });
+
+      const accountInfoUpdatedEvents =
+        await factory.getEvents.AccountInfoUpdated(
+          {},
+          {
+            fromBlock: 0n,
+          },
+        );
+
+      expect(accountInfoUpdatedEvents.length).to.be.equal(1);
+      expect(
+        accountInfoUpdatedEvents[0].args.account?.toLowerCase(),
+      ).to.be.equal(sender1.account.address.toLowerCase());
+
+      const accountInfo = await factory.read.accounts([
+        sender1.account.address,
+      ]);
+      expect(accountInfo[0]).to.be.equal(nickname);
+      expect(accountInfo[1]).to.be.equal(profilePicture);
+    });
+
+    it('Should not use existing nickname', async function () {
+      const [sender1, sender2] = await viem.getWalletClients();
+      const factory = await loadFixture(deployMemezFactory);
+
+      const nickname = 'nickname1';
+      const profilePicture = 'profilePicture';
+
+      await factory.write.updateAccountInfo([nickname, profilePicture], {
+        account: sender1.account,
+      });
+
+      await expect(
+        factory.write.updateAccountInfo([nickname, profilePicture], {
+          account: sender2.account,
+        }),
+      ).to.be.revertedWith('Nickname exists');
+    });
+
+    it('Should deploy MemeCoin and set owner', async function () {
+      const factory = await loadFixture(deployMemezFactory);
+      const [sender1] = await viem.getWalletClients();
+      const memecoin = await deployMemeCoin(
+        factory,
+        'Test',
+        'TST',
+        parseEther('0.003'),
+      );
+
+      const ownerAddress = await memecoin.read.owner();
+
+      expect(ownerAddress.toLowerCase()).to.be.equal(
+        sender1.account.address.toLowerCase(),
+      );
+    });
+
+    it('Should update created Memecoins count and arrays after the deployment of MemeCoin', async function () {
+      const factory = await loadFixture(deployMemezFactory);
+      const [sender1] = await viem.getWalletClients();
+      const [, , initialUsersCount] = await factory.read.accounts([
+        sender1.account.address,
+      ]);
+      const initialAllCount = await factory.read.allMemecoinsCount();
+      const memecoin = await deployMemeCoin(
+        factory,
+        'Test',
+        'TST',
+        parseEther('0.003'),
+      );
+
+      const [, , updatedUsersCount] = await factory.read.accounts([
+        sender1.account.address,
+      ]);
+      const updatedAllCount = await factory.read.allMemecoinsCount();
+
+      expect(updatedUsersCount).to.be.equal(initialUsersCount + 1n);
+      expect(updatedAllCount).to.be.equal(initialAllCount + 1n);
+
+      const lastUserMemecoin = await factory.read.memecoinsByCreators([
+        sender1.account.address,
+        initialUsersCount,
+      ]);
+      const lastAllMemecoin = await factory.read.allMemecoins([
+        initialUsersCount,
+      ]);
+
+      expect(lastUserMemecoin.toLowerCase()).to.be.equal(
+        memecoin.address.toLowerCase(),
+      );
+      expect(lastAllMemecoin.toLowerCase()).to.be.equal(
+        memecoin.address.toLowerCase(),
       );
     });
   });
@@ -257,7 +371,46 @@ describe('Memez', function () {
         expect(token2).to.be.equal(weth);
       });
     });
-    describe('Unexpected usage checking', async function () {
+    describe('Metadata updating', function () {
+      it('Should update metadata if not listed yet', async function () {
+        const [sender1] = await viem.getWalletClients();
+        const factory = await loadFixture(deployMemezFactory);
+        const memecoin = await deployMemeCoin(
+          factory,
+          'Test',
+          'TST',
+          parseEther('0.003'),
+        );
+        const description = '*description*';
+        const image = '*image*';
+        await expect(
+          memecoin.write.updateMetadata([description, image], {
+            account: sender1.account,
+          }),
+        ).to.emit(memecoin, 'MetadataUpdated');
+
+        const onChainDescription = await memecoin.read.description();
+        const onChainImage = await memecoin.read.image();
+
+        expect(onChainDescription).to.be.equal(description);
+        expect(onChainImage).to.be.equal(image);
+      });
+      it('Should not update metadata if already listed', async function () {
+        const [sender1] = await viem.getWalletClients();
+        const factory = await loadFixture(deployMemezFactory);
+        const cap = parseEther('0.003');
+        const memecoin = await deployMemeCoin(factory, 'Test', 'TST', cap);
+        await memecoin.write.mint({ value: cap, account: sender1.account });
+        const description = '*description*';
+        const image = '*image*';
+        await expect(
+          memecoin.write.updateMetadata([description, image], {
+            account: sender1.account,
+          }),
+        ).to.be.revertedWith('Already listed');
+      });
+    });
+    describe('Unexpected usage checking', function () {
       it('Should check MemeCoin legitimacy', async function () {
         const legitFactory = await loadFixture(deployMemezFactory);
         const nonLegitFactory = await loadFixture(deployMemezFactory);
@@ -323,7 +476,7 @@ describe('Memez', function () {
           account: sender.account,
         });
 
-        expect(mintAfterListing).to.be.revertedWith('Already listed');
+        await expect(mintAfterListing).to.be.revertedWith('Already listed');
       });
 
       it('Should not retire after listing', async function () {
@@ -351,7 +504,7 @@ describe('Memez', function () {
           },
         );
 
-        expect(retireAfterListing).to.be.revertedWith('Already listed');
+        await expect(retireAfterListing).to.be.revertedWith('Already listed');
       });
     });
   });

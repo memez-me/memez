@@ -1,23 +1,51 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import PageHead from '../components/PageHead';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useAccount, useSignTypedData } from 'wagmi';
+import {
+  useAccount,
+  useReadContract,
+  useReadContracts,
+  useSimulateContract,
+  useWaitForTransactionReceipt,
+  useWriteContract,
+} from 'wagmi';
 import { useRouter } from 'next/router';
-import { Address, Hash, isAddress, zeroAddress } from 'viem';
+import { Address, isAddress, zeroAddress } from 'viem';
 import { trimAddress } from '../utils';
 import { PrimaryButton } from '../components/buttons';
 import TextInput from '../components/TextInput';
-import { keccak256 } from 'ethereumjs-util/dist/hash';
+import { useMemeCoinConfig, useMemezFactoryConfig } from '../hooks';
+import _ from 'lodash';
+import MemeCoinCard from '../components/MemeCoinCard';
+
+type MemeCoinPartialData = {
+  name: string;
+  symbol: string;
+  description: string | '';
+  image: string | '';
+  cap: bigint | 0n;
+  reserveBalance: bigint | 0n;
+};
+
+const memecoinFunctionsToCall = [
+  'name',
+  'symbol',
+  'description',
+  'image',
+  'cap',
+  'reserveBalance',
+] as (keyof MemeCoinPartialData)[];
 
 export function Profile() {
   const { address } = useAccount();
   const router = useRouter();
-  const [nickname, setNickname] = useState('Nickname');
-  const [profilePicture, setProfilePicture] = useState('/icon.png');
+  const [nickname, setNickname] = useState('');
+  const [profilePicture, setProfilePicture] = useState('');
   const [isEditing, setIsEditing] = useState(false);
 
-  const { signTypedDataAsync } = useSignTypedData();
+  const memezFactoryConfig = useMemezFactoryConfig();
+  const memeCoinConfig = useMemeCoinConfig(zeroAddress); // address will be overridden
 
   const profileAddress = useMemo(
     () =>
@@ -32,37 +60,119 @@ export function Profile() {
     [address, profileAddress],
   );
 
+  const { data: accountInfo, refetch: refetchAccountInfo } = useReadContract({
+    ...memezFactoryConfig,
+    functionName: 'accounts',
+    args: [profileAddress],
+    query: {
+      enabled: profileAddress !== zeroAddress,
+    },
+  });
+
+  const { data: memecoinsAddressesData } = useReadContracts({
+    contracts: [...Array(Number(accountInfo?.[2] ?? 0)).keys()].map(
+      (i) =>
+        ({
+          ...memezFactoryConfig,
+          functionName: 'memecoinsByCreators',
+          args: [profileAddress, i],
+        }) as const,
+    ),
+    query: {
+      enabled: !!accountInfo && accountInfo[2] > 0n,
+    },
+  });
+
+  const memecoinsAddresses = useMemo(
+    () =>
+      (memecoinsAddressesData ?? [])
+        .filter((res) => res.status === 'success')
+        .map(({ result }) => result!),
+    [memecoinsAddressesData],
+  );
+
+  const { data: memecoinsInfo } = useReadContracts({
+    contracts: (memecoinsAddresses ?? []).flatMap((address) =>
+      memecoinFunctionsToCall.map((functionName) => ({
+        ...memeCoinConfig,
+        address,
+        functionName,
+        args: [],
+      })),
+    ),
+    query: {
+      enabled: memecoinsAddresses.length > 0,
+    },
+  });
+
+  const memecoinsData = useMemo(
+    () =>
+      _.chunk(memecoinsInfo ?? [], memecoinFunctionsToCall.length).map(
+        (memecoinData, i) => ({
+          ...(_.fromPairs(
+            _.zip(
+              memecoinFunctionsToCall,
+              memecoinData.map((data) => data.result),
+            ),
+          ) as MemeCoinPartialData),
+          address: memecoinsAddresses[i],
+        }),
+      ),
+    [memecoinsInfo, memecoinsAddresses],
+  );
+
+  const { data, error } = useSimulateContract({
+    ...memezFactoryConfig,
+    functionName: 'updateAccountInfo',
+    args: [nickname, profilePicture],
+    query: {
+      enabled: isCurrent && isEditing,
+    },
+  });
+
+  const simulationError = useMemo(
+    () => (error ? (error.cause as any)?.reason ?? error.message : null),
+    [error],
+  );
+
+  const {
+    data: hash,
+    writeContractAsync,
+    isPending,
+    reset,
+  } = useWriteContract();
+
+  const { isLoading: isConfirming, isSuccess: isConfirmed } =
+    useWaitForTransactionReceipt({ hash });
+
+  useEffect(() => {
+    if (!accountInfo) return;
+    setNickname((old) => accountInfo[0] || old);
+    setProfilePicture((old) => accountInfo[1] || old);
+  }, [accountInfo]);
+
   const saveChanges = useCallback(() => {
-    signTypedDataAsync({
-      types: {
-        Profile: [
-          { name: 'action', type: 'string' },
-          { name: 'time', type: 'uint256' },
-          { name: 'nickname', type: 'string' },
-          { name: 'profilePictureHash', type: 'bytes' },
-        ],
-      },
-      primaryType: 'Profile',
-      message: {
-        action: 'Update profile',
-        time: BigInt(Math.round(Date.now() / 1000)),
-        nickname: nickname,
-        profilePictureHash: keccak256(profilePicture).toString() as Hash,
-      },
-    })
-      .then((signature) => {
-        console.log(signature); //TODO
-        setIsEditing(false);
+    writeContractAsync(data!.request)
+      .then(() => {
+        refetchAccountInfo().then(() => {
+          setIsEditing(false);
+          reset();
+        });
       })
       .catch((e) => console.error(e));
-  }, [nickname, profilePicture, signTypedDataAsync]);
+  }, [writeContractAsync, data, refetchAccountInfo, reset]);
+
+  const nicknameToShow = useMemo(
+    () => (isEditing ? nickname : accountInfo?.[0] || nickname),
+    [accountInfo, isEditing, nickname],
+  );
 
   return (
     <>
       <PageHead
         title="memez"
-        subtitle={nickname ?? profileAddress}
-        description={`memez ${nickname ?? profileAddress} profile`}
+        subtitle={nicknameToShow ?? profileAddress}
+        description={`memez ${nicknameToShow ?? profileAddress} profile`}
       />
       <div className="flex flex-col justify-center items-center">
         <Link
@@ -79,14 +189,14 @@ export function Profile() {
               <div className="flex flex-row gap-2">
                 <Image
                   className="rounded-full object-contain"
-                  src={profilePicture}
+                  src={profilePicture || '/icon.png'}
                   width={64}
                   height={64}
-                  alt={`Profile picture of ${nickname}`}
+                  alt={`Profile picture of ${nicknameToShow}`}
                 />
                 <div className="flex flex-col gap-1">
                   <h1 className="text-title font-bold">
-                    {nickname || <i>No nickname</i>}
+                    {nicknameToShow || <i>No nickname</i>}
                   </h1>
                   <h2 className="text-body-2 font-medium">
                     {trimAddress(profileAddress)}
@@ -100,29 +210,32 @@ export function Profile() {
                       value={nickname}
                       placeholder="Nickname"
                       type="text"
+                      disabled={isPending || isConfirming}
                       onChange={(e) => setNickname(e.target.value)}
                     />
-                    <TextInput
-                      placeholder="Profile picture"
-                      type="file"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        const reader = new FileReader();
-                        reader.readAsDataURL(file);
-                        reader.onload = (ev) => {
-                          const imageData = ev.target?.result;
-                          if (!imageData) return;
-                          setProfilePicture(imageData.toString());
-                        };
-                      }}
-                      accept="image/*"
-                    />
+                    {/*<TextInput*/}
+                    {/*  placeholder="Profile picture"*/}
+                    {/*  type="file"*/}
+                    {/*  onChange={(e) => {*/}
+                    {/*    const file = e.target.files?.[0];*/}
+                    {/*    if (!file) return;*/}
+                    {/*    const reader = new FileReader();*/}
+                    {/*    reader.readAsDataURL(file);*/}
+                    {/*    reader.onload = (ev) => {*/}
+                    {/*      const imageData = ev.target?.result;*/}
+                    {/*      if (!imageData) return;*/}
+                    {/*      setProfilePicture(imageData.toString());*/}
+                    {/*    };*/}
+                    {/*  }}*/}
+                    {/*  accept="image/*"*/}
+                    {/*/>*/}
                     <PrimaryButton
-                      className="text-second-success border-second-success"
+                      disabled={!data?.request || isPending || isConfirming}
                       onClick={saveChanges}
                     >
-                      Save changes
+                      {isPending || isConfirming
+                        ? 'Saving changes...'
+                        : 'Save changes'}
                     </PrimaryButton>
                   </>
                 ) : (
@@ -130,6 +243,42 @@ export function Profile() {
                     Edit profile
                   </PrimaryButton>
                 ))}
+              {isConfirmed && (
+                <p className="text-second-success">Changes saved!</p>
+              )}
+              {simulationError && (
+                <p className="text-second-error">Error: {simulationError}</p>
+              )}
+              {memecoinsData.length > 0 && (
+                <h3 className="text-title font-medium text-center">
+                  Created Coins: {memecoinsData.length}
+                </h3>
+              )}
+              {memecoinsData.map(
+                ({
+                  address,
+                  name,
+                  symbol,
+                  description,
+                  image,
+                  cap,
+                  reserveBalance,
+                }) => (
+                  <MemeCoinCard
+                    key={address}
+                    address={address}
+                    balance={reserveBalance}
+                    cap={cap}
+                    icon={image}
+                    name={name}
+                    symbol={symbol}
+                    description={description}
+                    creatorAddress={profileAddress}
+                    creatorNickname={nicknameToShow}
+                    creatorProfilePicture={profilePicture}
+                  />
+                ),
+              )}
             </>
           ) : (
             <p className="text-second-error">

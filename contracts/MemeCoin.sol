@@ -5,6 +5,7 @@ import { IUniswapV2Factory } from "@uniswap/v2-core/contracts/interfaces/IUniswa
 import { IUniswapV2Router02 } from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import '@openzeppelin/contracts/interfaces/IERC5313.sol';
 import "./Formula.sol";
 import "hardhat/console.sol";
 
@@ -28,10 +29,13 @@ interface IFraxswapRouter is IUniswapV2Router02 {
     ) external returns (uint256[] memory amounts);
 }
 
-contract MemeCoin is ERC20 {
+contract MemeCoin is ERC20, IERC5313 {
     address constant public fraxswapFactory = 0xE30521fe7f3bEB6Ad556887b50739d6C7CA667E6;
     address constant public fraxswapRouter = 0x39cd4db6460d8B5961F73E997E86DdbB7Ca4D5F6;
     address internal immutable formula;
+    address public immutable owner;
+    string public description;
+    string public image;
     uint256 public cap;
 
     event Mint(
@@ -45,16 +49,25 @@ contract MemeCoin is ERC20 {
         uint256 liquidity
     );
 
-    constructor(address formula_, string memory name, string memory symbol, uint256 cap_) payable ERC20(name, symbol) {
+    event MetadataUpdated(string description, string image);
+
+    constructor(address formula_, string memory name, string memory symbol, uint256 cap_, address owner_) payable ERC20(name, symbol) {
         require(cap_ > 0, 'Positive cap expected');
 
         formula = formula_;
         cap = cap_;
+        owner = owner_;
     }
 
     modifier notListed() {
-        require(cap >= 0, 'Already listed');
+        require(cap > 0, 'Already listed');
         _;
+    }
+
+    function updateMetadata(string memory description_, string memory image_) external virtual notListed {
+        description = description_;
+        image = image_;
+        emit MetadataUpdated(description, image);
     }
 
     function _listing() internal {

@@ -359,8 +359,8 @@ export function Coin() {
                   </PrimaryButton>
                 ))}
               {data[3].result && data[3].result > 0n && (
-                <div className="flex flex-col gap-4">
-                  <div className="flex flex-row gap-2">
+                <div className="flex flex-col gap-x3 mt-x2">
+                  <div className="flex flex-row gap-x1">
                     <TextInput
                       className="flex-1"
                       value={amount}
@@ -380,44 +380,46 @@ export function Coin() {
                       {isBuy ? 'ETH' : data[2].result}
                     </span>
                   </div>
-                  <BuySellSwitch isBuy={isBuy} onChange={setIsBuy} />
-                  <PrimaryButton
-                    className={`h-x9 ${
-                      isBuy
-                        ? 'bg-main-light disabled:bg-main-light disabled:bg-opacity-40 enabled:hover:bg-main-accent enabled:focus:bg-main-accent enabled:active:bg-main-light enabled:active:bg-opacity-40'
-                        : 'bg-second-sell disabled:bg-second-sell disabled:bg-opacity-40 enabled:hover:bg-second-error enabled:focus:bg-second-error enabled:active:bg-second-sell enabled:active:bg-opacity-40'
-                    }`}
-                    disabled={
-                      !!currentSimulationError ||
-                      isPending ||
-                      isConfirming ||
-                      isConfirmed ||
-                      !amount ||
-                      Number(amount) <= 0 ||
-                      (isBuy ? !mintData : !retireData)
-                    }
-                    onClick={
-                      isBuy
-                        ? () => writeContract(mintData!.request)
-                        : () => writeContract(retireData!.request)
-                    }
-                  >
-                    {isPending || isConfirming
-                      ? isBuy
-                        ? 'Buying...'
-                        : 'Selling...'
-                      : 'Place trade'}
-                  </PrimaryButton>
-                  {isConfirmed && (
-                    <p className="text-second-success">
-                      Transaction confirmed!
-                    </p>
-                  )}
-                  {!!simulationErrorMessage && (
-                    <p className="text-second-error">
-                      Error: {simulationErrorMessage}
-                    </p>
-                  )}
+                  <div className="flex flex-col gap-x1 w-full">
+                    <BuySellSwitch isBuy={isBuy} onChange={setIsBuy} />
+                    <PrimaryButton
+                      className={`h-x9 ${
+                        isBuy
+                          ? 'bg-main-light disabled:bg-main-light disabled:bg-opacity-40 enabled:hover:bg-main-accent enabled:focus:bg-main-accent enabled:active:bg-main-light enabled:active:bg-opacity-40'
+                          : 'bg-second-sell disabled:bg-second-sell disabled:bg-opacity-40 enabled:hover:bg-second-error enabled:focus:bg-second-error enabled:active:bg-second-sell enabled:active:bg-opacity-40'
+                      }`}
+                      disabled={
+                        !!currentSimulationError ||
+                        isPending ||
+                        isConfirming ||
+                        isConfirmed ||
+                        !amount ||
+                        Number(amount) <= 0 ||
+                        (isBuy ? !mintData : !retireData)
+                      }
+                      onClick={
+                        isBuy
+                          ? () => writeContract(mintData!.request)
+                          : () => writeContract(retireData!.request)
+                      }
+                    >
+                      {isPending || isConfirming
+                        ? isBuy
+                          ? 'Buying...'
+                          : 'Selling...'
+                        : 'Place trade'}
+                    </PrimaryButton>
+                    {isConfirmed && (
+                      <p className="text-second-success">
+                        Transaction confirmed!
+                      </p>
+                    )}
+                    {!!simulationErrorMessage && (
+                      <p className="text-second-error">
+                        Error: {simulationErrorMessage}
+                      </p>
+                    )}
+                  </div>
                 </div>
               )}
             </>

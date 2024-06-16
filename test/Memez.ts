@@ -409,6 +409,19 @@ describe('Memez', function () {
           }),
         ).to.be.revertedWith('Already listed');
       });
+      it('Should not update metadata if not owner', async function () {
+        const [sender1, sender2] = await viem.getWalletClients();
+        const factory = await loadFixture(deployMemezFactory);
+        const cap = parseEther('0.003');
+        const memecoin = await deployMemeCoin(factory, 'Test', 'TST', cap);
+        const description = '*description*';
+        const image = '*image*';
+        await expect(
+          memecoin.write.updateMetadata([description, image], {
+            account: sender2.account,
+          }),
+        ).to.be.revertedWith('Ownable: caller is not the owner');
+      });
     });
     describe('Unexpected usage checking', function () {
       it('Should check MemeCoin legitimacy', async function () {

@@ -43,6 +43,9 @@ const memecoinFunctionsToCall = [
 export function Index() {
   const [currentPage, setCurrentPage] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [cachedMemecoinsPages, setCachedMemecoinsPages] = useState<
+    (MemeCoinData & { address: Address })[][]
+  >([]);
   const [accounts, setAccounts] = useState<Record<Address, AccountPartialInfo>>(
     {},
   );
@@ -53,11 +56,14 @@ export function Index() {
   const { data: count } = useReadContract({
     ...memezFactoryConfig,
     functionName: 'allMemecoinsCount',
+    query: {
+      refetchInterval: 2000,
+    },
   });
 
   const { data: addresses, fetchNextPage: fetchNextAddressesPage } =
     useInfiniteReadContracts({
-      cacheKey: 'memecoinsAddresses',
+      cacheKey: `memecoinsAddresses-${(count ?? '').toString()}`,
       contracts(pageParam) {
         return [
           ...new Array(Math.max(0, Math.min(pageParam + 1, paginationLimit))),
@@ -87,7 +93,7 @@ export function Index() {
     fetchNextPage: fetchNextDataPage,
     refetch: refetchDataPage,
   } = useInfiniteReadContracts({
-    cacheKey: 'memecoinsData',
+    cacheKey: `memecoinsData-${(count ?? '').toString()}`,
     contracts(pageParam) {
       const addressesArr = (addresses as any)?.pages?.[pageParam]?.map(
         ({ result }: { result: Address }) => result,
@@ -130,6 +136,12 @@ export function Index() {
       ) as (MemeCoinData & { address: Address })[][],
     [addresses, memecoinsData],
   );
+
+  useEffect(() => {
+    setCachedMemecoinsPages((old) =>
+      memecoinsPages?.length > 0 ? memecoinsPages : old,
+    );
+  }, [memecoinsPages]);
 
   const allCreatorsAddresses = useMemo(
     () =>
@@ -189,7 +201,7 @@ export function Index() {
 
   const goForward = useCallback(() => {
     setIsLoading(true);
-    if ((memecoinsData as any).pageParams?.length <= currentPage + 1) {
+    if ((memecoinsData as any)?.pageParams?.length <= currentPage + 1) {
       fetchNextAddressesPage().then(() =>
         refetchDataPage().then(() =>
           fetchNextDataPage().then(() => {
@@ -215,7 +227,7 @@ export function Index() {
       <PageHead title="memez" description="memez memecoins app" />
       <div className="flex flex-col justify-center items-center">
         <h3 className="text-title font-medium text-center">
-          Total memecoins: {count ? Number(count) : 'loading...'}
+          Total memecoins: {count !== undefined ? Number(count) : 'loading...'}
         </h3>
         <Link
           href="/create"
@@ -226,7 +238,7 @@ export function Index() {
           [create memecoin]
         </Link>
         <div className="grid grid-col-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x4 my-x4">
-          {memecoinsPages[currentPage]?.map(
+          {cachedMemecoinsPages[currentPage]?.map(
             ({
               name,
               symbol,
@@ -263,7 +275,9 @@ export function Index() {
           <span className="">{currentPage + 1}</span>
           <SecondaryButton
             disabled={
-              isLoading || memecoinsPages[currentPage]?.length < paginationLimit
+              isLoading ||
+              !memecoinsPages[currentPage] ||
+              memecoinsPages[currentPage].length < paginationLimit
             }
             onClick={goForward}
           >

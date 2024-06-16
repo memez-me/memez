@@ -114,7 +114,7 @@ export function Coin() {
     functionName: 'mint',
     value: parseEther((amount ?? 0).toString()),
     query: {
-      enabled: isBuy && !!amount,
+      enabled: isBuy && !!amount && Number(amount) > 0,
     },
   });
 
@@ -127,7 +127,7 @@ export function Coin() {
     functionName: 'retire',
     args: [parseEther((amount ?? 0).toString())],
     query: {
-      enabled: !isBuy && !!amount,
+      enabled: !isBuy && !!amount && Number(amount) > 0,
     },
   });
 
@@ -154,6 +154,7 @@ export function Coin() {
     if (!isConfirmed) return;
     const timer = setTimeout(() => {
       reset();
+      setAmount(0);
       Promise.all([
         refetchData(),
         refetchBalance(),
@@ -305,6 +306,8 @@ export function Coin() {
               )}
               {!!address &&
                 address === data[6].result &&
+                data[3].result &&
+                data[3].result > 0n &&
                 (isEditing ? (
                   <>
                     <TextInput
@@ -369,7 +372,8 @@ export function Coin() {
                     isPending ||
                     isConfirming ||
                     isConfirmed ||
-                    !amount
+                    !amount ||
+                    Number(amount) <= 0
                   }
                   onClick={
                     isBuy

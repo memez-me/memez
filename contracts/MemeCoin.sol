@@ -64,7 +64,12 @@ contract MemeCoin is ERC20, IERC5313 {
         _;
     }
 
-    function updateMetadata(string memory description_, string memory image_) external virtual notListed {
+    modifier onlyOwner() {
+        require(msg.sender == owner, 'Ownable: caller is not the owner');
+        _;
+    }
+
+    function updateMetadata(string memory description_, string memory image_) external virtual notListed onlyOwner {
         description = description_;
         image = image_;
         emit MetadataUpdated(description, image);

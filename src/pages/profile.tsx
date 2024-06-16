@@ -102,6 +102,7 @@ export function Profile() {
     ),
     query: {
       enabled: memecoinsAddresses.length > 0,
+      refetchInterval: 5000,
     },
   });
 

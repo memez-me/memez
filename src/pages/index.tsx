@@ -108,6 +108,7 @@ export function Index() {
     },
     query: {
       enabled: !!addresses,
+      refetchInterval: 5000,
       initialPageParam: 0,
       getNextPageParam: (_lastPage, _allPages, lastPageParam) => {
         return lastPageParam + 1;

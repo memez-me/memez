@@ -116,17 +116,21 @@ export function Create() {
             isError={!!symbolError}
             onChange={(e) => setSymbol(e.target.value)}
           />
-          <TextInput
-            value={cap}
-            placeholder="Cap"
-            type="number"
-            step={1}
-            max={1000}
-            isError={!!capError}
-            onChange={(e) =>
-              setCap(e.target.value.toString().replaceAll(/[^0-9.,]/g, ''))
-            }
-          />
+          <div className="flex flex-row gap-x1">
+            <TextInput
+              className="flex-1"
+              value={cap}
+              placeholder="Cap"
+              type="number"
+              step={1}
+              max={1000}
+              isError={!!capError}
+              onChange={(e) =>
+                setCap(e.target.value.toString().replaceAll(/[^0-9.,]/g, ''))
+              }
+            />
+            <span className="font-extrabold self-center">ETH</span>
+          </div>
           <PrimaryButton
             disabled={isAnyError || !data?.request || isPending || isConfirming}
             onClick={() => writeContract(data!.request)}

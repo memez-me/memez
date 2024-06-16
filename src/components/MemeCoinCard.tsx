@@ -33,13 +33,20 @@ function MemeCoinCard({
 }: MemeCoinCardProps) {
   return (
     <div className={`flex flex-row gap-x1 ${className}`}>
-      <Image
-        className="rounded-full object-contain"
-        src={icon || '/icon.png'}
-        alt={`${name} (${symbol}) icon`}
-        width={128}
-        height={128}
-      />
+      <Link
+        href={`/coin?address=${address}`}
+        passHref
+        rel="noreferrer"
+        className="disabled:shadow hover:font-bold hover:text-main-light focus:text-main-light active:text-main-shadow"
+      >
+        <Image
+          className="rounded-full object-contain"
+          src={icon || '/icon.png'}
+          alt={`${name} (${symbol}) icon`}
+          width={128}
+          height={128}
+        />
+      </Link>
       <div className="flex flex-col w-[280px] max-h-[128px] overflow-auto">
         <h3 className="text-main-accent">
           Created by{' '}

@@ -1,5 +1,6 @@
 import React, { ReactNode } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { Roboto_Mono } from 'next/font/google';
 import { useWeb3Modal, useWeb3ModalState } from '@web3modal/wagmi/react';
 import { useAccount } from 'wagmi';
@@ -25,7 +26,14 @@ export function Layout({ children }: { children: ReactNode }) {
     <>
       <div className={`flex flex-col w-full h-full ${robotoMono.className}`}>
         <div className="flex landscape:flex-row portrait:flex-col items-center self-stretch gap-x2 p-x4 lg:px-x11 rounded-b-[20px] bg-main-grey bg-opacity-50">
-          <AnimatedLogo />
+          <Link
+            href="/"
+            passHref
+            rel="noreferrer"
+            className="disabled:shadow hover:font-bold hover:text-main-light focus:text-main-light active:text-main-shadow"
+          >
+            <AnimatedLogo />
+          </Link>
           <div className="flex flex-col gap-2 ml-auto">
             {address ? (
               <SecondaryButton

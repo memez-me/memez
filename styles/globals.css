@@ -9,6 +9,7 @@ body {
     color: #92FFCB;
     font-size: 17px;
     font-family: "Roboto Mono", consolas, monospace;
+    line-height: normal;
 }
 
 #__next {
@@ -39,6 +40,10 @@ body {
 
 ::-webkit-scrollbar-thumb:active {
     background: #2FFF50;
+}
+
+input {
+    caret-color: #92FFCB;
 }
 
 input::-webkit-outer-spin-button,

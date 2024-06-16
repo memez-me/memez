@@ -39,8 +39,12 @@ module.exports = {
           text: 'rgba(0, 255, 133, 0.50)',
         },
       },
+      boxShadow: {
+        element:
+          '0px 0px 8px 0px var(--tw-shadow-color, rgba(0, 255, 133, 0.50))',
+      },
       textShadow: {
-        DEFAULT: '0px 0px 20px var(--tw-shadow-color)',
+        DEFAULT: '0px 0px 20px var(--tw-shadow-color, rgba(0, 255, 133, 0.50))',
       },
       spacing: spacings,
       borderRadius: spacings,

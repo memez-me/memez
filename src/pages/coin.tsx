@@ -175,6 +175,16 @@ export function Coin() {
     refetchRetire,
   ]);
 
+  const setAmountToMax = useCallback(
+    () =>
+      setAmount(
+        isBuy
+          ? formatEther((data?.[3]?.result ?? 0n) - (balanceData?.value ?? 0n))
+          : formatEther(data?.[5]?.result ?? 0n),
+      ),
+    [balanceData, data, isBuy],
+  );
+
   const { data: updateData, error: updateError } = useSimulateContract({
     ...memeCoinConfig,
     functionName: 'updateMetadata',
@@ -365,8 +375,9 @@ export function Coin() {
                           e.target.value.toString().replaceAll(/[^0-9.,]/g, ''),
                         )
                       }
+                      onMax={data ? setAmountToMax : undefined}
                     />
-                    <span className="font-extrabold self-center">
+                    <span className="text-title font-extrabold self-center">
                       {isBuy ? 'ETH' : data[2].result}
                     </span>
                   </div>

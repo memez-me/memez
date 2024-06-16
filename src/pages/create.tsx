@@ -129,7 +129,7 @@ export function Create() {
                 setCap(e.target.value.toString().replaceAll(/[^0-9.,]/g, ''))
               }
             />
-            <span className="font-extrabold self-center">ETH</span>
+            <span className="text-title font-extrabold self-center">ETH</span>
           </div>
           <PrimaryButton
             disabled={isAnyError || !data?.request || isPending || isConfirming}

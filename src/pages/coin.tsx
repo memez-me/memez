@@ -3,11 +3,14 @@ import PageHead from '../components/PageHead';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
-import { useMemeCoinConfig, useMemezFactoryConfig } from '../hooks';
+import {
+  useChartOptions,
+  useMemeCoinConfig,
+  useMemezFactoryConfig,
+} from '../hooks';
 import { Address, formatEther, isAddress, parseEther, zeroAddress } from 'viem';
 import {
   useAccount,
-  useBalance,
   useReadContract,
   useReadContracts,
   useSimulateContract,
@@ -17,7 +20,10 @@ import {
 import { PrimaryButton } from '../components/buttons';
 import TextInput from '../components/TextInput';
 import BuySellSwitch from '../components/BuySellSwitch';
-import { trimAddress } from '../utils';
+import ApexChart from '../components/ApexChart';
+import { trimAddress, Power } from '../utils';
+
+const chartIntervalsCount = 50;
 
 export function Coin() {
   const { address } = useAccount();
@@ -83,10 +89,68 @@ export function Coin() {
         ...memeCoinConfig,
         functionName: 'image',
       },
+      {
+        ...memeCoinConfig,
+        functionName: 'reserveBalance',
+      },
     ],
     query: {
       refetchInterval: 5000,
     },
+  });
+
+  const maxSupply = useMemo(() => {
+    if (!data) return undefined; // calculatePurchaseReturn with deposit=cap and supply=0
+    const cap = data[3].result;
+    if (!cap) return data[4].result;
+    const baseN = 1000n * cap;
+    const { result, precision } = Power.power(baseN, 1n, 1n, 3n); //TODO: get coefficients from smart contract
+    return (result - 1n) >> precision;
+  }, [data]);
+
+  const chartData = useMemo(() => {
+    if (!maxSupply) return undefined;
+    const zerosCount = maxSupply.toString().length - 1;
+    const biggest10Pow = 10n ** BigInt(zerosCount);
+    const nearestFlooredSupply = (maxSupply / biggest10Pow) * biggest10Pow;
+    const supplyStep = nearestFlooredSupply / BigInt(chartIntervalsCount);
+
+    return [
+      ...[...new Array(chartIntervalsCount)].map(
+        (_, i) => BigInt(i) * supplyStep,
+      ),
+      nearestFlooredSupply,
+      maxSupply,
+    ].map(
+      (supply) =>
+        [
+          Number(formatEther(supply)),
+          Number(formatEther((supply * supply) / 3000n)), //TODO: get coefficient from smart contract
+        ] as [number, number],
+    );
+  }, [maxSupply]);
+
+  const currentProgressPoint = useMemo(
+    () =>
+      !!data && !!data[4].result && !!data[3].result && !!data[9].result
+        ? {
+            x: Number(formatEther(data[4].result)),
+            y: Number(formatEther((data[4].result * data[4].result) / 3000n)), //TODO: get coefficient from smart contract
+            text:
+              Number(
+                (
+                  Number((data[9].result * 10000n) / data[3].result) / 100
+                ).toFixed(2),
+              ) + '%',
+          }
+        : undefined,
+    [data],
+  );
+
+  const chartOptions = useChartOptions({
+    titleX: 'Supply',
+    titleY: 'Price',
+    point: currentProgressPoint,
   });
 
   useEffect(() => {
@@ -102,10 +166,6 @@ export function Coin() {
     query: {
       enabled: !!data && data[0].result && !!data[6].result,
     },
-  });
-
-  const { data: balanceData, refetch: refetchBalance } = useBalance({
-    address: memeCoinAddress,
   });
 
   const {
@@ -158,31 +218,19 @@ export function Coin() {
     const timer = setTimeout(() => {
       reset();
       setAmount(0);
-      Promise.all([
-        refetchData(),
-        refetchBalance(),
-        refetchMint(),
-        refetchRetire(),
-      ]);
+      Promise.all([refetchData(), refetchMint(), refetchRetire()]);
     }, 3000);
     return () => clearTimeout(timer);
-  }, [
-    isConfirmed,
-    reset,
-    refetchData,
-    refetchBalance,
-    refetchMint,
-    refetchRetire,
-  ]);
+  }, [isConfirmed, reset, refetchData, refetchMint, refetchRetire]);
 
   const setAmountToMax = useCallback(
     () =>
       setAmount(
         isBuy
-          ? formatEther((data?.[3]?.result ?? 0n) - (balanceData?.value ?? 0n))
+          ? formatEther((data?.[3]?.result ?? 0n) - (data?.[9]?.result ?? 0n))
           : formatEther(data?.[5]?.result ?? 0n),
       ),
-    [balanceData, data, isBuy],
+    [data, isBuy],
   );
 
   const { data: updateData, error: updateError } = useSimulateContract({
@@ -290,33 +338,6 @@ export function Coin() {
                   Description: {isEditing ? description : data[7].result}
                 </p>
               )}
-              {data[3].result && data[3].result > 0n ? (
-                <>
-                  <p>
-                    Token cap: <span>{formatEther(data[3].result ?? 0n)}</span>{' '}
-                    <span className="font-bold">ETH</span>
-                  </p>
-                  <p>
-                    Current cap:{' '}
-                    <span>{formatEther(balanceData?.value ?? 0n)}</span>{' '}
-                    <span className="font-bold">ETH</span>
-                  </p>
-                </>
-              ) : (
-                <p>
-                  Status: <b>Already listed</b>
-                </p>
-              )}
-              <p>
-                Token supply: <span>{formatEther(data[4].result ?? 0n)}</span>{' '}
-                <span className="font-bold">{data[2].result}</span>
-              </p>
-              {!!address && (
-                <p>
-                  My balance: <span>{formatEther(data[5].result ?? 0n)}</span>{' '}
-                  <span className="font-bold">{data[2].result}</span>
-                </p>
-              )}
               {!!address &&
                 address === data[6].result &&
                 data[3].result &&
@@ -358,8 +379,29 @@ export function Coin() {
                     Edit description
                   </PrimaryButton>
                 ))}
+              {data[3].result && data[3].result > 0n ? (
+                chartData && (
+                  <ApexChart
+                    options={chartOptions}
+                    series={[{ data: chartData }]}
+                    type="area"
+                    width="100%"
+                    height="256"
+                  />
+                )
+              ) : (
+                <p>
+                  Status: <b>Already listed</b>
+                </p>
+              )}
+              {!!address && (
+                <p>
+                  My balance: <span>{formatEther(data[5].result ?? 0n)}</span>{' '}
+                  <span className="font-bold">{data[2].result}</span>
+                </p>
+              )}
               {data[3].result && data[3].result > 0n && (
-                <div className="flex flex-col gap-x3 mt-x2">
+                <div className="flex flex-col gap-x3">
                   <div className="flex flex-row gap-x1">
                     <TextInput
                       className="flex-1"

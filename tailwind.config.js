@@ -1,6 +1,7 @@
 const plugin = require('tailwindcss/plugin');
 
 const spacings = {
+  'x0.5': '4px',
   x1: '8px',
   x2: '16px',
   x3: '24px',

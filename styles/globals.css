@@ -72,3 +72,9 @@ input[type=number] {
 #S_1 {
     animation: animation_S_1_flow_1 1.197s cubic-bezier(0.175, 0.885, 0.32, 1.275) 1.4s forwards;
 }
+
+.apexcharts-tooltip {
+    @apply rounded-x1 bg-main-shadow border border-main-accent shadow-element text-main-accent;
+    width: max-content !important;
+    border-color: #92FFCB !important;
+}

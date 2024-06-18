@@ -23,7 +23,7 @@ import BuySellSwitch from '../components/BuySellSwitch';
 import ApexChart from '../components/ApexChart';
 import { trimAddress, Power } from '../utils';
 
-const chartIntervalsCount = 50;
+const chartIntervalsCount = 100;
 
 export function Coin() {
   const { address } = useAccount();
@@ -110,24 +110,17 @@ export function Coin() {
 
   const chartData = useMemo(() => {
     if (!maxSupply) return undefined;
-    const zerosCount = maxSupply.toString().length - 1;
-    const biggest10Pow = 10n ** BigInt(zerosCount);
-    const nearestFlooredSupply = (maxSupply / biggest10Pow) * biggest10Pow;
-    const supplyStep = nearestFlooredSupply / BigInt(chartIntervalsCount);
+    const supplyStep = maxSupply / BigInt(chartIntervalsCount);
 
-    return [
-      ...[...new Array(chartIntervalsCount)].map(
-        (_, i) => BigInt(i) * supplyStep,
-      ),
-      nearestFlooredSupply,
-      maxSupply,
-    ].map(
-      (supply) =>
-        [
-          Number(formatEther(supply)),
-          Number(formatEther((supply * supply) / 3000n)), //TODO: get coefficient from smart contract
-        ] as [number, number],
-    );
+    return [...new Array(chartIntervalsCount + 1)]
+      .map((_, i) => BigInt(i) * supplyStep)
+      .map(
+        (supply) =>
+          [
+            Number(formatEther(supply)),
+            Number(formatEther((supply * supply) / 3000n)), //TODO: get coefficient from smart contract
+          ] as [number, number],
+      );
   }, [maxSupply]);
 
   const currentProgressPoint = useMemo(

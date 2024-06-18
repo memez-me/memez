@@ -159,11 +159,11 @@ export const useChartOptions = ({
         show: false,
       },
       custom: ({ seriesIndex, dataPointIndex, w }) => {
-        const [name, value] = w.config.series[seriesIndex].data[dataPointIndex];
+        const [x, y] = w.config.series[seriesIndex].data[dataPointIndex];
         return `
         <div class="flex flex-col p-x0.5 bg-main-shadow">
-          <p>Price: ${name}</p>
-          <p>Supply: ${value}</p>
+          <p>${titleY ?? 'Y'}: ${y}</p>
+          <p>${titleX ?? 'X'}: ${x}</p>
         </div>
       `;
       },

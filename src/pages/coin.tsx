@@ -132,7 +132,10 @@ export function Coin() {
 
   const currentProgressPoint = useMemo(
     () =>
-      !!data && !!data[4].result && !!data[3].result && !!data[9].result
+      !!data &&
+      data[4].result !== undefined &&
+      !!data[3].result &&
+      data[9].result !== undefined
         ? {
             x: Number(formatEther(data[4].result)),
             y: Number(formatEther((data[4].result * data[4].result) / 3000n)), //TODO: get coefficient from smart contract
@@ -148,6 +151,7 @@ export function Coin() {
   );
 
   const chartOptions = useChartOptions({
+    chartTitle: 'Bonding curve progress',
     titleX: 'Supply',
     titleY: 'Price',
     point: currentProgressPoint,

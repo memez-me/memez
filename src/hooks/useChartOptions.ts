@@ -1,6 +1,7 @@
 import { ApexOptions } from 'apexcharts';
 
 type UseChartOptionsParams = {
+  chartTitle?: string;
   titleX?: string;
   titleY?: string;
   point?: {
@@ -11,12 +12,22 @@ type UseChartOptionsParams = {
 };
 
 export const useChartOptions = ({
+  chartTitle,
   titleX,
   titleY,
   point,
 }: UseChartOptionsParams = {}) => {
   return {
     colors: ['#92FFCB'],
+    title: chartTitle
+      ? {
+          text: chartTitle,
+          align: 'center',
+          style: {
+            color: '#92FFCB',
+          },
+        }
+      : undefined,
     chart: {
       foreColor: 'transparent',
       background: 'transparent',

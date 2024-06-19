@@ -21,6 +21,5 @@ function assertEnvVar(name) {
 }
 
 assertEnvVar('NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID');
-assertEnvVar('NEXT_PUBLIC_MEMEZ_FACTORY_ADDRESS');
 
 module.exports = nextConfig;

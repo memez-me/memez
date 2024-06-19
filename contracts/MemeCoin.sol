@@ -40,13 +40,16 @@ contract MemeCoin is ERC20, IERC5313 {
 
     event Mint(
         address indexed by,
-        uint256 amount
+        uint256 amount,
+        uint256 liquidity,
+        uint256 newSupply
     );
 
     event Retire(
         address indexed by,
         uint256 amount,
-        uint256 liquidity
+        uint256 liquidity,
+        uint256 newSupply
     );
 
     event MetadataUpdated(string description, string image);
@@ -125,7 +128,7 @@ contract MemeCoin is ERC20, IERC5313 {
 
         uint256 amount = calculatePurchaseReturn(value);
         _mint(_msgSender(), amount);
-        emit Mint(_msgSender(), amount);
+        emit Mint(_msgSender(), amount, value, totalSupply());
 
         if (reserveBalance() >= cap) {
             _listing();
@@ -140,7 +143,7 @@ contract MemeCoin is ERC20, IERC5313 {
         uint256 liquidity = calculateSaleReturn(amount);
         payable(_msgSender()).transfer(liquidity);
         _burn(_msgSender(), amount);
-        emit Retire(_msgSender(), amount, liquidity);
+        emit Retire(_msgSender(), amount, liquidity, totalSupply());
     }
 
     function calculatePurchaseReturn(

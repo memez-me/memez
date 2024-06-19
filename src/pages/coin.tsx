@@ -8,31 +8,48 @@ import {
   useMemeCoinConfig,
   useMemezFactoryConfig,
 } from '../hooks';
-import { Address, formatEther, isAddress, parseEther, zeroAddress } from 'viem';
+import {
+  Address,
+  BlockTag,
+  formatEther,
+  getAbiItem,
+  isAddress,
+  parseEther,
+  zeroAddress,
+} from 'viem';
 import {
   useAccount,
+  useClient,
   useReadContract,
   useReadContracts,
   useSimulateContract,
   useWaitForTransactionReceipt,
+  useWatchContractEvent,
   useWriteContract,
 } from 'wagmi';
 import { PrimaryButton } from '../components/buttons';
 import TextInput from '../components/TextInput';
 import BuySellSwitch from '../components/BuySellSwitch';
 import ApexChart from '../components/ApexChart';
-import { trimAddress, Power } from '../utils';
+import { trimAddress, Power, getPrice } from '../utils';
+import { getLogs } from 'viem/actions';
+import _ from 'lodash';
+import LightweightChart from '../components/LightweightChart';
+import type { UTCTimestamp } from 'lightweight-charts';
 
 const chartIntervalsCount = 100;
+const mintRetireLogsPollingInterval = 2000;
 
 export function Coin() {
   const { address } = useAccount();
+  const client = useClient();
   const router = useRouter();
   const [isBuy, setIsBuy] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [description, setDescription] = useState('');
   const [coinIcon, setCoinIcon] = useState('');
   const [amount, setAmount] = useState<string | number>(0);
+  const [isEventLongPolling, setIsEventLongPolling] = useState(true); // it seems that Tenderly has some problems with events watching
 
   const memeCoinAddress = useMemo(
     () =>
@@ -44,6 +61,167 @@ export function Coin() {
 
   const memezFactoryConfig = useMemezFactoryConfig();
   const memeCoinConfig = useMemeCoinConfig(memeCoinAddress);
+
+  const getMintRetireLogsAsync = useCallback(
+    async (fromBlock?: bigint | BlockTag) => {
+      if (
+        !client ||
+        !memezFactoryConfig ||
+        !memeCoinConfig ||
+        memeCoinConfig.address === zeroAddress
+      )
+        return null;
+
+      if (fromBlock === undefined) {
+        const deployedEvents = await getLogs(client, {
+          address: memezFactoryConfig.address,
+          event: getAbiItem({
+            abi: memezFactoryConfig.abi,
+            name: 'MemeCoinDeployed',
+          }),
+          args: {
+            memecoin: memeCoinConfig.address,
+          },
+          strict: true,
+          fromBlock: 'earliest',
+        });
+
+        if (!deployedEvents.length) return;
+        fromBlock = deployedEvents[0].blockNumber;
+      }
+
+      return getLogs(client, {
+        address: memeCoinConfig.address,
+        events: [
+          getAbiItem({ abi: memeCoinConfig.abi, name: 'Mint' }),
+          getAbiItem({ abi: memeCoinConfig.abi, name: 'Retire' }),
+        ],
+        strict: true,
+        fromBlock,
+      });
+    },
+    [client, memezFactoryConfig, memeCoinConfig],
+  );
+
+  const [mintRetireLogs, setMintRetireLogs] =
+    useState<Awaited<ReturnType<typeof getMintRetireLogsAsync>>>(null);
+
+  const isAnyMintRetireLogsFetched = useMemo(
+    () => !!mintRetireLogs,
+    [mintRetireLogs],
+  );
+
+  const lastMintRetireBlock = useMemo(
+    () => _.last(mintRetireLogs)?.blockNumber,
+    [mintRetireLogs],
+  );
+
+  useEffect(() => {
+    if (
+      !client ||
+      !memezFactoryConfig ||
+      !memeCoinConfig ||
+      memeCoinConfig.address === zeroAddress ||
+      isAnyMintRetireLogsFetched
+    )
+      return;
+    getMintRetireLogsAsync().then(setMintRetireLogs);
+  }, [
+    isAnyMintRetireLogsFetched,
+    client,
+    memezFactoryConfig,
+    memeCoinConfig,
+    getMintRetireLogsAsync,
+  ]);
+
+  useWatchContractEvent({
+    address: memeCoinConfig.address,
+    abi: memeCoinConfig.abi,
+    eventName: 'Mint',
+    enabled:
+      memeCoinConfig.address !== zeroAddress &&
+      isAnyMintRetireLogsFetched &&
+      !isEventLongPolling,
+    strict: true,
+    pollingInterval: mintRetireLogsPollingInterval,
+    onLogs: (logs) => {
+      setMintRetireLogs((old) => [...old!, ...logs]);
+    },
+    onError: (error) => {
+      console.error(error);
+      setIsEventLongPolling(true);
+    },
+  });
+
+  useWatchContractEvent({
+    address: memeCoinConfig.address,
+    abi: memeCoinConfig.abi,
+    eventName: 'Retire',
+    enabled:
+      memeCoinConfig.address !== zeroAddress &&
+      isAnyMintRetireLogsFetched &&
+      !isEventLongPolling,
+    strict: true,
+    pollingInterval: mintRetireLogsPollingInterval,
+    onLogs: (logs) => {
+      setMintRetireLogs((old) => [...old!, ...logs]);
+    },
+    onError: (error) => {
+      console.error(error);
+      setIsEventLongPolling(true);
+    },
+  });
+
+  useEffect(() => {
+    if (!isAnyMintRetireLogsFetched || !isEventLongPolling) return;
+    const intervalId = setInterval(() => {
+      getMintRetireLogsAsync(
+        lastMintRetireBlock ? lastMintRetireBlock + 1n : 'earliest',
+      )
+        .then((res) =>
+          setMintRetireLogs((old) =>
+            res && res.length > 0 ? [...old!, ...res] : old,
+          ),
+        )
+        .catch((e) => console.error(e));
+    }, mintRetireLogsPollingInterval);
+
+    return () => clearInterval(intervalId);
+  }, [
+    getMintRetireLogsAsync,
+    isAnyMintRetireLogsFetched,
+    isEventLongPolling,
+    lastMintRetireBlock,
+  ]);
+
+  const candlestickData = useMemo(() => {
+    if (!mintRetireLogs?.length) return;
+    const prices = mintRetireLogs.map((event) => ({
+      open: Number(
+        formatEther(
+          getPrice(
+            event.args.newSupply -
+              event.args.amount * (event.eventName === 'Mint' ? 1n : -1n),
+          ),
+        ),
+      ),
+      close: Number(formatEther(getPrice(event.args.newSupply))),
+      seconds: (1706810743 + Number(event.blockNumber) * 2) as UTCTimestamp, //TODO: replace with real time
+    }));
+
+    const oneMinGroups = _.groupBy(
+      prices,
+      ({ seconds }) => (seconds - (seconds % 60)) / 60,
+    );
+
+    return _.entries(oneMinGroups).map(([minutes, prices]) => ({
+      open: _.first(prices)!.open,
+      high: _.max(_.map(prices, (price) => Math.max(price.open, price.close)))!,
+      low: _.min(_.map(prices, (price) => Math.min(price.open, price.close)))!,
+      close: _.last(prices)!.close,
+      time: (Number(minutes) * 60) as UTCTimestamp,
+    }));
+  }, [mintRetireLogs]);
 
   const {
     data,
@@ -118,7 +296,7 @@ export function Coin() {
         (supply) =>
           [
             Number(formatEther(supply)),
-            Number(formatEther((supply * supply) / 3000n)), //TODO: get coefficient from smart contract
+            Number(formatEther(getPrice(supply))), //TODO: get coefficient from smart contract
           ] as [number, number],
       );
   }, [maxSupply]);
@@ -131,7 +309,7 @@ export function Coin() {
       data[9].result !== undefined
         ? {
             x: Number(formatEther(data[4].result)),
-            y: Number(formatEther((data[4].result * data[4].result) / 3000n)), //TODO: get coefficient from smart contract
+            y: Number(formatEther(getPrice(data[4].result))), //TODO: get coefficient from smart contract
             text:
               Number(
                 (
@@ -377,15 +555,23 @@ export function Coin() {
                   </PrimaryButton>
                 ))}
               {data[3].result && data[3].result > 0n ? (
-                chartData && (
-                  <ApexChart
-                    options={chartOptions}
-                    series={[{ data: chartData }]}
-                    type="area"
-                    width="100%"
-                    height="256"
-                  />
-                )
+                <>
+                  {chartData && (
+                    <ApexChart
+                      options={chartOptions}
+                      series={[{ data: chartData }]}
+                      type="area"
+                      width="100%"
+                      height="256"
+                    />
+                  )}
+                  {candlestickData && (
+                    <LightweightChart
+                      className="h-[256px]"
+                      data={candlestickData}
+                    />
+                  )}
+                </>
               ) : (
                 <p>
                   Status: <b>Already listed</b>

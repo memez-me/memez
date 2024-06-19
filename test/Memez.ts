@@ -230,12 +230,13 @@ describe('Memez', function () {
           'TST',
           parseEther('0.03'),
         );
+        const value = parseEther('0.01');
         await memecoin.write.mint({
-          value: parseEther('0.01'),
+          value,
           account: sender1.account,
         });
         await memecoin.write.mint({
-          value: parseEther('0.01'),
+          value,
           account: sender2.account,
         });
         const buys = await memecoin.getEvents.Mint(
@@ -244,17 +245,32 @@ describe('Memez', function () {
             fromBlock: 0n,
           },
         );
-        // we expect first buyer to get more tokens than the second one
+
         expect(buys.length).to.be.equal(2);
-        expect(buys[0].args.amount).to.be.equal(
-          await memecoin.read.balanceOf([sender1.account.address]),
+
+        expect(buys[0].args.by?.toLowerCase()).to.be.equal(
+          sender1.account.address.toLowerCase(),
         );
-        expect(buys[1].args.amount).to.be.equal(
-          await memecoin.read.balanceOf([sender2.account.address]),
+        expect(buys[1].args.by?.toLowerCase()).to.be.equal(
+          sender2.account.address.toLowerCase(),
         );
+
+        // we expect first buyer to get more tokens than the second one
+        const balance1 = await memecoin.read.balanceOf([
+          sender1.account.address,
+        ]);
+        expect(buys[0].args.amount).to.be.equal(balance1);
+        const balance2 = await memecoin.read.balanceOf([
+          sender2.account.address,
+        ]);
+        expect(buys[1].args.amount).to.be.equal(balance2);
         expect(buys[0].args.amount).to.be.greaterThan(buys[1].args.amount);
 
-        const client = await viem.getPublicClient();
+        expect(buys[0].args.liquidity).to.be.equal(value);
+        expect(buys[1].args.liquidity).to.be.equal(value);
+
+        expect(buys[0].args.newSupply).to.be.equal(balance1);
+        expect(buys[1].args.newSupply).to.be.equal(balance1 + balance2);
       });
 
       it('Selling should give eth back. The amount of eth should be close to originally invested if the sell happens immediately', async function () {
@@ -266,8 +282,9 @@ describe('Memez', function () {
           'TST',
           parseEther('0.03'),
         );
+        const value = parseEther('0.01');
         await memecoin.write.mint({
-          value: parseEther('0.01'),
+          value,
           account: sender.account,
         });
         const balance = await memecoin.read.balanceOf([sender.account.address]);
@@ -280,10 +297,12 @@ describe('Memez', function () {
           },
         );
 
-        expect(parseEther('0.01')).to.be.approximately(
-          sells[0].args.liquidity,
-          10000000000,
+        expect(sells[0].args.by?.toLowerCase()).to.be.equal(
+          sender.account.address.toLowerCase(),
         );
+        expect(sells[0].args.amount).to.be.equal(balance);
+        expect(sells[0].args.liquidity).to.be.approximately(value, 10000000000);
+        expect(sells[0].args.newSupply).to.be.equal(0n);
       });
 
       it('Earlybirds should be able to earn if token pumps', async function () {
@@ -471,6 +490,18 @@ describe('Memez', function () {
         });
 
         expect(balanceBefore - gasSpent - cap).to.be.eq(balanceAfter);
+
+        const buys = await memecoin.getEvents.Mint(
+          {},
+          {
+            fromBlock: 0n,
+          },
+        );
+
+        const balance = await memecoin.read.balanceOf([sender.account.address]);
+        expect(buys[0].args.amount).to.be.equal(balance);
+        expect(buys[0].args.liquidity).to.be.equal(cap);
+        expect(buys[0].args.newSupply).to.be.equal(balance);
       });
 
       it('Should not mint after listing', async function () {

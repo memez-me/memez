@@ -32,8 +32,17 @@ function LightweightChart({
           textColor: '#92FFCB',
           background: { type: 'solid', color: 'transparent' },
         },
+        localization: {
+          priceFormatter: function (value: number) {
+            const fixed = value.toFixed(3);
+            if (Number(fixed) > 0) return Number.parseFloat(fixed).toString();
+            const exp = value.toExponential(3);
+            return Number.parseFloat(exp).toString();
+          },
+        },
         timeScale: {
           borderColor: 'transparent',
+          timeVisible: true,
         },
         rightPriceScale: {
           borderColor: 'transparent',
@@ -49,9 +58,11 @@ function LightweightChart({
         crosshair: {
           horzLine: {
             color: '#92FFCB',
+            labelBackgroundColor: '#20573D',
           },
           vertLine: {
             color: '#92FFCB',
+            labelBackgroundColor: '#20573D',
           },
         },
       } as DeepPartial<ChartOptions>),
@@ -66,6 +77,11 @@ function LightweightChart({
         borderVisible: false,
         wickUpColor: '#00FF85',
         wickDownColor: '#FF6B4A',
+        priceFormat: {
+          type: 'price',
+          precision: 3,
+          minMove: 0.001,
+        },
       } as CandlestickSeriesPartialOptions),
     [overriddenCandlestickOptions],
   );

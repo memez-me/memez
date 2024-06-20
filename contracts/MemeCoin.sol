@@ -42,14 +42,16 @@ contract MemeCoin is ERC20, IERC5313 {
         address indexed by,
         uint256 amount,
         uint256 liquidity,
-        uint256 newSupply
+        uint256 newSupply,
+        uint256 timestamp // debug only
     );
 
     event Retire(
         address indexed by,
         uint256 amount,
         uint256 liquidity,
-        uint256 newSupply
+        uint256 newSupply,
+        uint256 timestamp // debug only
     );
 
     event MetadataUpdated(string description, string image);
@@ -81,8 +83,8 @@ contract MemeCoin is ERC20, IERC5313 {
     function _listing() internal {
         uint amountToken = cap / price();
 
-        console.log(IFraxswapRouter(fraxswapRouter).quote(1, amountToken, cap));
-        console.log(price());
+        console.log(IFraxswapRouter(fraxswapRouter).quote(1, amountToken, cap)); // debug only
+        console.log(price()); // debug only
 
         _mint(address(this), amountToken);
         _approve(address(this), fraxswapRouter, amountToken);
@@ -128,7 +130,7 @@ contract MemeCoin is ERC20, IERC5313 {
 
         uint256 amount = calculatePurchaseReturn(value);
         _mint(_msgSender(), amount);
-        emit Mint(_msgSender(), amount, value, totalSupply());
+        emit Mint(_msgSender(), amount, value, totalSupply(), block.timestamp);
 
         if (reserveBalance() >= cap) {
             _listing();
@@ -143,7 +145,7 @@ contract MemeCoin is ERC20, IERC5313 {
         uint256 liquidity = calculateSaleReturn(amount);
         payable(_msgSender()).transfer(liquidity);
         _burn(_msgSender(), amount);
-        emit Retire(_msgSender(), amount, liquidity, totalSupply());
+        emit Retire(_msgSender(), amount, liquidity, totalSupply(), block.timestamp);
     }
 
     function calculatePurchaseReturn(

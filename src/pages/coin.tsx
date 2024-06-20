@@ -31,7 +31,7 @@ import { PrimaryButton } from '../components/buttons';
 import TextInput from '../components/TextInput';
 import BuySellSwitch from '../components/BuySellSwitch';
 import ApexChart from '../components/ApexChart';
-import { trimAddress, Power, getPrice } from '../utils';
+import { trimAddress, Power, getPrice, utcTimestampToLocal } from '../utils';
 import { getLogs } from 'viem/actions';
 import _ from 'lodash';
 import LightweightChart from '../components/LightweightChart';
@@ -206,7 +206,9 @@ export function Coin() {
         ),
       ),
       close: Number(formatEther(getPrice(event.args.newSupply))),
-      seconds: (1706810743 + Number(event.blockNumber) * 2) as UTCTimestamp, //TODO: replace with real time
+      seconds: utcTimestampToLocal(
+        Number(event.args.timestamp) as UTCTimestamp,
+      ),
     }));
 
     const oneMinGroups = _.groupBy(
@@ -222,6 +224,17 @@ export function Coin() {
       time: (Number(minutes) * 60) as UTCTimestamp,
     }));
   }, [mintRetireLogs]);
+
+  const candlestickPriceFormat = useMemo(() => {
+    if (!candlestickData) return;
+    const highest = _.maxBy(candlestickData, 'high')!.high;
+    const log10 = Math.floor(Math.log10(highest));
+    if (log10 > -3) return;
+    return {
+      precision: -log10,
+      minMove: 10 ** log10,
+    };
+  }, [candlestickData]);
 
   const {
     data,
@@ -569,6 +582,9 @@ export function Coin() {
                     <LightweightChart
                       className="h-[256px]"
                       data={candlestickData}
+                      candlestickOptions={{
+                        priceFormat: candlestickPriceFormat,
+                      }}
                     />
                   )}
                 </>

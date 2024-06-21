@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import PageHead from '../components/PageHead';
-import Image from 'next/image';
 import Link from 'next/link';
 import {
   useAccount,
@@ -18,6 +17,7 @@ import TextInput from '../components/TextInput';
 import { useMemeCoinConfig, useMemezFactoryConfig } from '../hooks';
 import _ from 'lodash';
 import MemeCoinCard from '../components/MemeCoinCard';
+import { ProfileIcon } from '../components/icons';
 
 type MemeCoinPartialData = {
   name: string;
@@ -70,7 +70,7 @@ export function Profile() {
   });
 
   const { data: memecoinsAddressesData } = useReadContracts({
-    contracts: [...Array(Number(accountInfo?.[2] ?? 0)).keys()].map(
+    contracts: [...new Array(Number(accountInfo?.[2] ?? 0)).keys()].map(
       (i) =>
         ({
           ...memezFactoryConfig,
@@ -188,12 +188,10 @@ export function Profile() {
           {profileAddress !== zeroAddress ? (
             <>
               <div className="flex flex-row gap-2">
-                <Image
-                  className="rounded-full object-contain"
-                  src={profilePicture || '/icon.png'}
-                  width={64}
-                  height={64}
-                  alt={`Profile picture of ${nicknameToShow}`}
+                <ProfileIcon
+                  address={profileAddress}
+                  size={64}
+                  src={profilePicture}
                 />
                 <div className="flex flex-col gap-1">
                   <h1 className="text-title font-bold">

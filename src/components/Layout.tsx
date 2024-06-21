@@ -1,5 +1,4 @@
 import React, { ReactNode } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { Roboto_Mono } from 'next/font/google';
 import { useWeb3Modal, useWeb3ModalState } from '@web3modal/wagmi/react';
@@ -8,6 +7,7 @@ import { PrimaryButton, SecondaryButton } from './buttons';
 import { trimAddress } from '../utils';
 import { useRouter } from 'next/router';
 import AnimatedLogo from './AnimatedLogo';
+import { ProfileIcon } from './icons';
 
 const robotoMono = Roboto_Mono({
   subsets: ['latin'],
@@ -20,7 +20,6 @@ export function Layout({ children }: { children: ReactNode }) {
   const { open } = useWeb3Modal();
   const { open: isOpen, loading } = useWeb3ModalState();
   const { address } = useAccount();
-  const profilePicture = '/icon.png'; // TODO: load picture
 
   return (
     <>
@@ -39,13 +38,7 @@ export function Layout({ children }: { children: ReactNode }) {
               <SecondaryButton
                 onClick={() => router.push(`/profile?address=${address}`)}
               >
-                <Image
-                  className="rounded-full object-contain flex-shrink-0"
-                  src={profilePicture}
-                  width={32}
-                  height={32}
-                  alt="Profile picture"
-                />
+                <ProfileIcon address={address} size={32} />
                 <span className="text-body-2 font-medium tracking-body">
                   {trimAddress(address)}
                 </span>

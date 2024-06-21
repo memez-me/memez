@@ -1,8 +1,8 @@
 import React from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { trimAddress } from '../utils';
 import { Address, formatEther } from 'viem';
+import { CoinIcon, ProfileIcon } from './icons';
 
 type MemeCoinCardProps = {
   className?: string;
@@ -11,7 +11,7 @@ type MemeCoinCardProps = {
   icon?: string;
   name: string;
   symbol: string;
-  address: string;
+  address: Address;
   description?: string;
   creatorAddress: Address;
   creatorNickname?: string;
@@ -39,13 +39,7 @@ function MemeCoinCard({
         rel="noreferrer"
         className="disabled:shadow hover:font-bold hover:text-main-light focus:text-main-light active:text-main-shadow"
       >
-        <Image
-          className="rounded-full object-contain"
-          src={icon || '/icon.png'}
-          alt={`${name} (${symbol}) icon`}
-          width={128}
-          height={128}
-        />
+        <CoinIcon address={address} size={128} src={icon} symbol={symbol} />
       </Link>
       <div className="flex flex-col w-[280px] max-h-[128px] leading-[25.5px] overflow-auto">
         <h3 className="text-main-accent">
@@ -56,12 +50,11 @@ function MemeCoinCard({
             rel="noreferrer"
             className="disabled:shadow hover:font-bold hover:text-main-light focus:text-main-light active:text-main-shadow"
           >
-            <Image
-              className="inline ounded-full object-contain"
-              src={creatorProfilePicture || '/icon.png'}
-              alt={`${creatorAddress} icon`}
-              width={16}
-              height={16}
+            <ProfileIcon
+              className="inline"
+              address={creatorAddress}
+              size={16}
+              src={creatorProfilePicture}
             />{' '}
             {creatorNickname || trimAddress(creatorAddress)}
           </Link>

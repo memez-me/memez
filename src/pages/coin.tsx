@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import PageHead from '../components/PageHead';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useRouter } from 'next/router';
 import {
   useChartOptions,
@@ -36,6 +35,7 @@ import { getLogs } from 'viem/actions';
 import _ from 'lodash';
 import LightweightChart from '../components/LightweightChart';
 import type { UTCTimestamp } from 'lightweight-charts';
+import { CoinIcon, ProfileIcon } from '../components/icons';
 
 const chartIntervalsCount = 100;
 const mintRetireLogsPollingInterval = 2000;
@@ -478,12 +478,12 @@ export function Coin() {
         <div className="flex flex-col gap-4 w-full max-w-[420px] mt-6 text-body tracking-body">
           {data && data.every((d) => d.status === 'success') && !isError ? (
             <>
-              <Image
-                className="rounded-full object-contain mx-auto"
-                src={(isEditing ? coinIcon : data[8].result) || '/icon.png'}
-                alt={`${data[1].result} (${data[2].result}) icon`}
-                width={128}
-                height={128}
+              <CoinIcon
+                className="mx-auto"
+                address={memeCoinAddress}
+                size={128}
+                symbol={data[2].result ?? '$$$'}
+                src={isEditing ? coinIcon : data[8].result}
               />
               <p>
                 Token name: <span>{data[1].result}</span>
@@ -508,12 +508,11 @@ export function Coin() {
                       rel="noreferrer"
                       className="disabled:shadow hover:font-bold hover:text-main-light focus:text-main-light active:text-main-shadow"
                     >
-                      <Image
-                        className="inline ounded-full object-contain"
-                        src={ownerData[1] || '/icon.png'}
-                        alt={`${data[6].result} icon`}
-                        width={16}
-                        height={16}
+                      <ProfileIcon
+                        className="inline"
+                        address={data[6].result ?? zeroAddress}
+                        size={16}
+                        src={ownerData[1]}
                       />{' '}
                       {ownerData[0] || trimAddress(data[6].result!)}
                     </Link>

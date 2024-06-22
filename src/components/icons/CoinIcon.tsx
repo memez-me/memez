@@ -98,7 +98,7 @@ function CustomJazzIcon({
       <circle cx={size / 2} cy={size / 2} r={size / 3} fill="#47514C80" />
       {symbol && (
         <text
-          className="text-shadow"
+          className="text-shadow pointer-events-none"
           textLength={size / 2}
           lengthAdjust="spacing"
           x={'50%'}

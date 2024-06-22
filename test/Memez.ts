@@ -4,7 +4,7 @@ import {
 } from '@nomicfoundation/hardhat-toolbox-viem/network-helpers';
 import { expect } from 'chai';
 import hre, { ignition, viem } from 'hardhat';
-import { parseEther, getContract, Address } from 'viem';
+import { parseEther, getContract, Address, zeroAddress } from 'viem';
 import MemezFactory from '../ignition/modules/MemezFactory';
 import MockERC20 from '../ignition/modules/MockERC20';
 import { fraxswapRouterAbi } from '../contracts/fraxswapRouter.abi';
@@ -216,6 +216,129 @@ describe('Memez', function () {
       expect(lastAllMemecoin.toLowerCase()).to.be.equal(
         memecoin.address.toLowerCase(),
       );
+    });
+  });
+
+  describe('Chat', function () {
+    it('Should add message to deployed MemeCoin thread', async function () {
+      const factory = await loadFixture(deployMemezFactory);
+      const [sender1] = await viem.getWalletClients();
+      const memecoin = await deployMemeCoin(
+        factory,
+        'Test',
+        'TST',
+        parseEther('0.003'),
+      );
+
+      const memecoinAddress = memecoin.address;
+
+      const text = '*My text message*';
+
+      await expect(factory.write.addMessage([memecoinAddress, text])).to.emit(
+        factory,
+        'MessageCreated',
+      );
+
+      const events = await factory.getEvents.MessageCreated(
+        {},
+        {
+          fromBlock: 0n,
+        },
+      );
+
+      expect(events.length).to.be.equal(1);
+
+      expect(events[0].args.memecoinThread?.toLowerCase()).to.be.equal(
+        memecoinAddress.toLowerCase(),
+      );
+      expect(events[0].args.sender?.toLowerCase()).to.be.equal(
+        sender1.account.address.toLowerCase(),
+      );
+      expect(events[0].args.messageIndex).to.be.equal(0n);
+    });
+
+    it('Should not add message to invalid thread', async function () {
+      const factory = await loadFixture(deployMemezFactory);
+
+      const text = '*My text message*';
+
+      await expect(
+        factory.write.addMessage([factory.address, text]),
+      ).to.be.revertedWith('Memecoin is not legit');
+    });
+
+    it('Should like message', async function () {
+      const factory = await loadFixture(deployMemezFactory);
+      const [sender1] = await viem.getWalletClients();
+      const memecoin = await deployMemeCoin(
+        factory,
+        'Test',
+        'TST',
+        parseEther('0.003'),
+      );
+
+      const memecoinAddress = memecoin.address;
+
+      const text = '*My text message*';
+
+      await factory.write.addMessage([memecoinAddress, text]);
+
+      await expect(factory.write.likeMessage([memecoinAddress, 0n])).to.emit(
+        factory,
+        'MessageLiked',
+      );
+
+      const events = await factory.getEvents.MessageLiked(
+        {},
+        {
+          fromBlock: 0n,
+        },
+      );
+
+      expect(events.length).to.be.equal(1);
+
+      expect(events[0].args.memecoinThread?.toLowerCase()).to.be.equal(
+        memecoinAddress.toLowerCase(),
+      );
+      expect(events[0].args.sender?.toLowerCase()).to.be.equal(
+        sender1.account.address.toLowerCase(),
+      );
+      expect(events[0].args.messageIndex).to.be.equal(0n);
+
+      const [, , , likesCount] = await factory.read.threads([
+        memecoinAddress,
+        0n,
+      ]);
+
+      expect(likesCount).to.be.equal(1);
+    });
+
+    it('Should not like message that does not exist', async function () {
+      const factory = await loadFixture(deployMemezFactory);
+
+      await expect(factory.write.likeMessage([factory.address, 0n])).to.be
+        .reverted;
+    });
+
+    it('Should not like message twice', async function () {
+      const factory = await loadFixture(deployMemezFactory);
+      const memecoin = await deployMemeCoin(
+        factory,
+        'Test',
+        'TST',
+        parseEther('0.003'),
+      );
+
+      const memecoinAddress = memecoin.address;
+
+      const text = '*My text message*';
+
+      await factory.write.addMessage([memecoinAddress, text]);
+
+      await factory.write.likeMessage([memecoinAddress, 0n]);
+      await expect(
+        factory.write.likeMessage([memecoinAddress, 0n]),
+      ).to.be.revertedWith('Message is already liked');
     });
   });
 

@@ -36,6 +36,7 @@ import _ from 'lodash';
 import LightweightChart from '../components/LightweightChart';
 import type { UTCTimestamp } from 'lightweight-charts';
 import { CoinIcon, ProfileIcon } from '../components/icons';
+import Chat from '../components/Chat';
 
 const chartIntervalsCount = 100;
 const mintRetireLogsPollingInterval = 2000;
@@ -502,12 +503,7 @@ export function Coin() {
                   {!ownerData ? (
                     trimAddress(data[6].result ?? zeroAddress)
                   ) : (
-                    <Link
-                      href={`/profile?address=${data[6].result!}`}
-                      passHref
-                      rel="noreferrer"
-                      className="disabled:shadow hover:font-bold hover:text-main-light focus:text-main-light active:text-main-shadow"
-                    >
+                    <>
                       <ProfileIcon
                         className="inline"
                         address={data[6].result ?? zeroAddress}
@@ -515,7 +511,7 @@ export function Coin() {
                         src={ownerData[1]}
                       />{' '}
                       {ownerData[0] || trimAddress(data[6].result!)}
-                    </Link>
+                    </>
                   )}{' '}
                   {address === data[6].result && <i>(You)</i>}
                 </Link>
@@ -660,6 +656,7 @@ export function Coin() {
                       </p>
                     )}
                   </div>
+                  <Chat className="w-full" memecoin={memeCoinAddress} />
                 </div>
               )}
             </>

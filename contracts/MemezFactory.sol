@@ -2,8 +2,9 @@
 pragma solidity >=0.8.0;
 
 import "./MemeCoin.sol";
+import "./MemezChat.sol";
 
-contract MemezFactory {
+contract MemezFactory is MemezChat {
     address public immutable formula;
     mapping(address => AccountInfo) public accounts;
     mapping(string => address) public nicknamesToAccounts;
@@ -60,7 +61,7 @@ contract MemezFactory {
         )))));
     }
 
-    function isMemeCoinLegit(MemeCoin memecoin) public view returns (bool) {
+    function isMemeCoinLegit(MemeCoin memecoin) public override view returns (bool) {
         try memecoin.name() returns (string memory name) {
             try memecoin.symbol() returns (string memory symbol) {
                 try memecoin.cap() returns (uint256 cap) {

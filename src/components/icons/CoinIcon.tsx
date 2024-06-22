@@ -62,7 +62,7 @@ function CustomJazzIcon({
     const fill = randomColor();
 
     return (
-      <>
+      <g key={`shape_group_${index}`}>
         <ellipse
           key={`shape_${index}_0`}
           cx={0}
@@ -81,7 +81,7 @@ function CustomJazzIcon({
           fill={fill}
           transform={`translate(${tx} ${ty}) rotate(${rot.toFixed(1)} ${center} ${center})`}
         />
-      </>
+      </g>
     );
   });
 

@@ -1,18 +1,15 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import PageHead from '../components/PageHead';
 import Link from 'next/link';
-import { useRouter } from 'next/router';
 import {
   useChartOptions,
   useMemeCoinConfig,
   useMemezFactoryConfig,
-} from '../hooks';
+} from '../../hooks';
 import {
   Address,
   BlockTag,
   formatEther,
   getAbiItem,
-  isAddress,
   parseEther,
   zeroAddress,
 } from 'viem';
@@ -26,39 +23,35 @@ import {
   useWatchContractEvent,
   useWriteContract,
 } from 'wagmi';
-import { PrimaryButton } from '../components/buttons';
-import TextInput from '../components/TextInput';
-import BuySellSwitch from '../components/BuySellSwitch';
-import ApexChart from '../components/ApexChart';
-import { trimAddress, Power, getPrice, utcTimestampToLocal } from '../utils';
+import { PrimaryButton } from '../buttons';
+import TextInput from '../TextInput';
+import BuySellSwitch from '../BuySellSwitch';
+import ApexChart from '../ApexChart';
+import { trimAddress, Power, getPrice, utcTimestampToLocal } from '../../utils';
 import { getLogs } from 'viem/actions';
 import _ from 'lodash';
-import LightweightChart from '../components/LightweightChart';
+import LightweightChart from '../LightweightChart';
 import type { UTCTimestamp } from 'lightweight-charts';
-import { CoinIcon, ProfileIcon } from '../components/icons';
-import Chat from '../components/Chat';
+import { CoinIcon, ProfileIcon } from '../icons';
+import Chat from '../Chat';
+
+type CoinInfoProps = {
+  memeCoinAddress: Address;
+  className?: string;
+};
 
 const chartIntervalsCount = 100;
 const mintRetireLogsPollingInterval = 2000;
 
-export function Coin() {
+export function CoinInfo({ memeCoinAddress, className }: CoinInfoProps) {
   const { address } = useAccount();
   const client = useClient();
-  const router = useRouter();
   const [isBuy, setIsBuy] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [description, setDescription] = useState('');
   const [coinIcon, setCoinIcon] = useState('');
   const [amount, setAmount] = useState<string | number>(0);
   const [isEventLongPolling, setIsEventLongPolling] = useState(true); // it seems that Tenderly has some problems with events watching
-
-  const memeCoinAddress = useMemo(
-    () =>
-      isAddress(router?.query?.address?.toString() ?? '')
-        ? (router?.query?.address as Address)
-        : zeroAddress,
-    [router],
-  );
 
   const memezFactoryConfig = useMemezFactoryConfig();
   const memeCoinConfig = useMemeCoinConfig(memeCoinAddress);
@@ -461,24 +454,21 @@ export function Coin() {
   }, [writeUpdateContractAsync, updateData, refetchData, resetUpdate]);
 
   return (
-    <>
-      <PageHead
-        title="memez"
-        subtitle={data?.[2]?.result ?? 'Memecoin'}
-        description={`memez ${data?.[1]?.result} memecoin`}
-      />
-      <div className="flex flex-col justify-center items-center">
-        <Link
-          href="/"
-          passHref
-          rel="noreferrer"
-          className="disabled:shadow hover:font-bold hover:text-main-light focus:text-main-light active:text-main-shadow"
-        >
-          [go back]
-        </Link>
-        <div className="flex flex-col gap-4 w-full max-w-[420px] mt-6 text-body tracking-body">
-          {data && data.every((d) => d.status === 'success') && !isError ? (
-            <>
+    <div
+      className={`flex flex-col p-x2 rounded-x1 bg-main-gray items-center ${className}`}
+    >
+      <Link
+        href="/"
+        passHref
+        rel="noreferrer"
+        className="disabled:shadow hover:font-bold hover:text-main-light focus:text-main-light active:text-main-shadow"
+      >
+        [close]
+      </Link>
+      <div className="flex flex-col gap-4 w-full mt-6 text-body tracking-body">
+        {data && data.every((d) => d.status === 'success') && !isError ? (
+          <>
+            <div className="flex flex-row portrait:flex-col gap-x2">
               <CoinIcon
                 className="mx-auto"
                 address={memeCoinAddress}
@@ -486,84 +476,90 @@ export function Coin() {
                 symbol={data[2].result ?? '$$$'}
                 src={isEditing ? coinIcon : data[8].result}
               />
-              <p>
-                Token name: <span>{data[1].result}</span>
-              </p>
-              <p>
-                Token symbol: <span>{data[2].result}</span>
-              </p>
-              <p>
-                Token creator:{' '}
-                <Link
-                  href={`/profile?address=${data[6].result}`}
-                  passHref
-                  rel="noreferrer"
-                  className="disabled:shadow hover:font-bold hover:text-main-light focus:text-main-light active:text-main-shadow"
-                >
-                  {!ownerData ? (
-                    trimAddress(data[6].result ?? zeroAddress)
-                  ) : (
-                    <>
-                      <ProfileIcon
-                        className="inline"
-                        address={data[6].result ?? zeroAddress}
-                        size={16}
-                        src={ownerData[1]}
-                      />{' '}
-                      {ownerData[0] || trimAddress(data[6].result!)}
-                    </>
-                  )}{' '}
-                  {address === data[6].result && <i>(You)</i>}
-                </Link>
-              </p>
-              {(isEditing || data[7].result) && (
-                <p className="max-h-x10 overflow-auto">
-                  Description: {isEditing ? description : data[7].result}
+              <div className="flex flex-col gap-x2 flex-1 text-body font-medium tracking-body">
+                <p>
+                  Token name: <span>{data[1].result}</span>
                 </p>
-              )}
-              {!!address &&
-                address === data[6].result &&
-                data[3].result &&
-                data[3].result > 0n &&
-                (isEditing ? (
-                  <>
-                    <TextInput
-                      value={description}
-                      placeholder="Description"
-                      type="text"
-                      disabled={isUpdatePending || isUpdateConfirming}
-                      onChange={(e) => setDescription(e.target.value)}
-                    />
-                    <PrimaryButton
-                      disabled={
-                        !updateData?.request ||
-                        isUpdatePending ||
-                        isUpdateConfirming
-                      }
-                      onClick={updateDescription}
-                    >
-                      {isUpdateConfirming || isUpdatePending
-                        ? 'Updating description...'
-                        : 'Update description'}
-                    </PrimaryButton>
-                    {isUpdateConfirmed && (
-                      <p className="text-second-success">
-                        Description updated!
-                      </p>
-                    )}
-                    {updateSimulationError && (
-                      <p className="text-second-error">
-                        Error: {updateSimulationError}
-                      </p>
-                    )}
-                  </>
-                ) : (
-                  <PrimaryButton onClick={() => setIsEditing(true)}>
-                    Edit description
-                  </PrimaryButton>
-                ))}
-              {data[3].result && data[3].result > 0n ? (
+                <p>
+                  Token symbol: <span>{data[2].result}</span>
+                </p>
+                <p>
+                  Token creator:{' '}
+                  <Link
+                    href={`/profile?address=${data[6].result}`}
+                    passHref
+                    rel="noreferrer"
+                    className="disabled:shadow hover:font-bold hover:text-main-light focus:text-main-light active:text-main-shadow"
+                  >
+                    {!ownerData ? (
+                      trimAddress(data[6].result ?? zeroAddress)
+                    ) : (
+                      <>
+                        <ProfileIcon
+                          className="inline"
+                          address={data[6].result ?? zeroAddress}
+                          size={16}
+                          src={ownerData[1]}
+                        />{' '}
+                        {ownerData[0] || trimAddress(data[6].result!)}
+                      </>
+                    )}{' '}
+                    {address === data[6].result && <i>(You)</i>}
+                  </Link>
+                </p>
+              </div>
+            </div>
+            {(isEditing || data[7].result) && (
+              <p className="max-h-x10 px-x3 py-x2 bg-main-black bg-opacity-10 rounded-x1 overflow-auto text-main-accent font-bold text-body-2 tracking-body">
+                {isEditing ? description : data[7].result}
+              </p>
+            )}
+            {!!address &&
+              address === data[6].result &&
+              data[3].result &&
+              data[3].result > 0n &&
+              (isEditing ? (
                 <>
+                  <TextInput
+                    value={description}
+                    placeholder="Description"
+                    type="text"
+                    disabled={isUpdatePending || isUpdateConfirming}
+                    onChange={(e) => setDescription(e.target.value)}
+                  />
+                  <PrimaryButton
+                    className="mx-auto"
+                    disabled={
+                      !updateData?.request ||
+                      isUpdatePending ||
+                      isUpdateConfirming
+                    }
+                    onClick={updateDescription}
+                  >
+                    {isUpdateConfirming || isUpdatePending
+                      ? 'Updating description...'
+                      : 'Update description'}
+                  </PrimaryButton>
+                  {isUpdateConfirmed && (
+                    <p className="text-second-success">Description updated!</p>
+                  )}
+                  {updateSimulationError && (
+                    <p className="text-second-error">
+                      Error: {updateSimulationError}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <PrimaryButton
+                  className="mx-auto"
+                  onClick={() => setIsEditing(true)}
+                >
+                  Edit description
+                </PrimaryButton>
+              ))}
+            {data[3].result && data[3].result > 0n ? (
+              <div className="flex flex-row portrait:flex-col gap-x2">
+                <div className="flex-1 landscape:max-w-[50%] content-center">
                   {chartData && (
                     <ApexChart
                       options={chartOptions}
@@ -573,7 +569,9 @@ export function Coin() {
                       height="256"
                     />
                   )}
-                  {candlestickData && (
+                </div>
+                <div className="flex-1 landscape:max-w-[50%] content-center">
+                  {candlestickData ? (
                     <LightweightChart
                       className="h-[256px]"
                       data={candlestickData}
@@ -581,97 +579,101 @@ export function Coin() {
                         priceFormat: candlestickPriceFormat,
                       }}
                     />
+                  ) : (
+                    <p className="text-center">
+                      Not enough data for candlestick chart
+                    </p>
                   )}
-                </>
-              ) : (
-                <p>
-                  Status: <b>Already listed</b>
-                </p>
-              )}
-              {!!address && (
-                <p>
-                  My balance: <span>{formatEther(data[5].result ?? 0n)}</span>{' '}
-                  <span className="font-bold">{data[2].result}</span>
-                </p>
-              )}
-              {data[3].result && data[3].result > 0n && (
-                <div className="flex flex-col gap-x3">
-                  <div className="flex flex-row gap-x1">
-                    <TextInput
-                      className="flex-1"
-                      value={amount}
-                      placeholder="Amount"
-                      type="number"
-                      min={0}
-                      step={0.001}
-                      disabled={isPending || isConfirming || isConfirmed}
-                      onChange={(e) =>
-                        setAmount(
-                          e.target.value.toString().replaceAll(/[^0-9.,]/g, ''),
-                        )
-                      }
-                      onMax={data ? setAmountToMax : undefined}
-                    />
-                    <span className="text-title font-extrabold self-center">
-                      {isBuy ? 'ETH' : data[2].result}
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-x1 w-full">
-                    <BuySellSwitch isBuy={isBuy} onChange={setIsBuy} />
-                    <PrimaryButton
-                      className={`h-x9 ${
-                        isBuy
-                          ? 'bg-main-light disabled:bg-main-light disabled:bg-opacity-40 enabled:hover:bg-main-accent enabled:focus:bg-main-accent enabled:active:bg-main-light enabled:active:bg-opacity-40'
-                          : 'bg-second-sell disabled:bg-second-sell disabled:bg-opacity-40 enabled:hover:bg-second-error enabled:focus:bg-second-error enabled:active:bg-second-sell enabled:active:bg-opacity-40'
-                      }`}
-                      disabled={
-                        !!currentSimulationError ||
-                        isPending ||
-                        isConfirming ||
-                        isConfirmed ||
-                        !amount ||
-                        Number(amount) <= 0 ||
-                        (isBuy ? !mintData : !retireData)
-                      }
-                      onClick={
-                        isBuy
-                          ? () => writeContract(mintData!.request)
-                          : () => writeContract(retireData!.request)
-                      }
-                    >
-                      {isPending || isConfirming
-                        ? isBuy
-                          ? 'Buying...'
-                          : 'Selling...'
-                        : 'Place trade'}
-                    </PrimaryButton>
-                    {isConfirmed && (
-                      <p className="text-second-success">
-                        Transaction confirmed!
-                      </p>
-                    )}
-                    {!!simulationErrorMessage && (
-                      <p className="text-second-error">
-                        Error: {simulationErrorMessage}
-                      </p>
-                    )}
-                  </div>
-                  <Chat className="w-full" memecoin={memeCoinAddress} />
                 </div>
-              )}
-            </>
-          ) : (
-            <p className="text-second-error">
-              Error:
-              {data && data[0].status === 'success' && !data[0].result
-                ? ' token address is not legit!'
-                : ' cannot get token information!'}
-            </p>
-          )}
-        </div>
+              </div>
+            ) : (
+              <p>
+                Status: <b>Already listed</b>
+              </p>
+            )}
+            {!!address && (
+              <p className="text-center text-body font-medium tracking-body">
+                My balance: <span>{formatEther(data[5].result ?? 0n)}</span>{' '}
+                <span className="font-bold">{data[2].result}</span>
+              </p>
+            )}
+            {data[3].result && data[3].result > 0n && (
+              <div className="flex flex-col gap-x3">
+                <div className="flex flex-row gap-x1">
+                  <TextInput
+                    className="flex-1"
+                    value={amount}
+                    placeholder="Amount"
+                    type="number"
+                    min={0}
+                    step={0.001}
+                    disabled={isPending || isConfirming || isConfirmed}
+                    onChange={(e) =>
+                      setAmount(
+                        e.target.value.toString().replaceAll(/[^0-9.,]/g, ''),
+                      )
+                    }
+                    onMax={data ? setAmountToMax : undefined}
+                  />
+                  <span className="text-title font-extrabold self-center">
+                    {isBuy ? 'ETH' : data[2].result}
+                  </span>
+                </div>
+                <div className="flex flex-col gap-x1 w-full">
+                  <BuySellSwitch isBuy={isBuy} onChange={setIsBuy} />
+                  <PrimaryButton
+                    className={`h-x9 ${
+                      isBuy
+                        ? 'bg-main-light disabled:bg-main-light disabled:bg-opacity-40 enabled:hover:bg-main-accent enabled:focus:bg-main-accent enabled:active:bg-main-light enabled:active:bg-opacity-40'
+                        : 'bg-second-sell disabled:bg-second-sell disabled:bg-opacity-40 enabled:hover:bg-second-error enabled:focus:bg-second-error enabled:active:bg-second-sell enabled:active:bg-opacity-40'
+                    }`}
+                    disabled={
+                      !!currentSimulationError ||
+                      isPending ||
+                      isConfirming ||
+                      isConfirmed ||
+                      !amount ||
+                      Number(amount) <= 0 ||
+                      (isBuy ? !mintData : !retireData)
+                    }
+                    onClick={
+                      isBuy
+                        ? () => writeContract(mintData!.request)
+                        : () => writeContract(retireData!.request)
+                    }
+                  >
+                    {isPending || isConfirming
+                      ? isBuy
+                        ? 'Buying...'
+                        : 'Selling...'
+                      : 'Place trade'}
+                  </PrimaryButton>
+                  {isConfirmed && (
+                    <p className="text-second-success">
+                      Transaction confirmed!
+                    </p>
+                  )}
+                  {!!simulationErrorMessage && (
+                    <p className="text-second-error">
+                      Error: {simulationErrorMessage}
+                    </p>
+                  )}
+                </div>
+                <Chat className="w-full" memecoin={memeCoinAddress} />
+              </div>
+            )}
+          </>
+        ) : (
+          <p className="text-second-error text-center">
+            Error:
+            {data && data[0].status === 'success' && !data[0].result
+              ? ' token address is not legit!'
+              : ' cannot get token information!'}
+          </p>
+        )}
       </div>
-    </>
+    </div>
   );
 }
 
-export default Coin;
+export default CoinInfo;

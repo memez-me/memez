@@ -208,7 +208,7 @@ function Chat({ memecoin, className }: ChatProps) {
                 result && (
                   <div
                     key={i}
-                    className="flex flex-col py-x1 border-b last:border-0 border-main-shadow"
+                    className="flex flex-col py-x1 border-b first:border-0 border-main-shadow"
                   >
                     <div className="flex flex-row gap-x1">
                       <div className="min-w-0 overflow-hidden overflow-ellipsis text-nowrap">

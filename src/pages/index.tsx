@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import PageHead from '../components/PageHead';
 import Link from 'next/link';
 import { useMemeCoinConfig, useMemezFactoryConfig } from '../hooks';
-import { Address, zeroAddress } from 'viem';
+import { Address, isAddress, zeroAddress } from 'viem';
 import {
   useInfiniteReadContracts,
   useReadContract,
@@ -11,9 +11,11 @@ import {
 import _ from 'lodash';
 import MemeCoinCard from '../components/MemeCoinCard';
 import { SecondaryButton } from '../components/buttons';
+import { useRouter } from 'next/router';
+import { CoinInfo } from '../components/panels';
 
 //const paginationLimit = 50;
-const paginationLimit = 12;
+const paginationLimit = 10;
 
 type AccountPartialInfo = {
   nickname: string;
@@ -41,6 +43,7 @@ const memecoinFunctionsToCall = [
 ] as (keyof MemeCoinData)[];
 
 export function Index() {
+  const router = useRouter();
   const [currentPage, setCurrentPage] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [cachedMemecoinsPages, setCachedMemecoinsPages] = useState<
@@ -48,6 +51,14 @@ export function Index() {
   >([]);
   const [accounts, setAccounts] = useState<Record<Address, AccountPartialInfo>>(
     {},
+  );
+
+  const memeCoinAddress = useMemo(
+    () =>
+      isAddress(router?.query?.coin?.toString() ?? '')
+        ? (router?.query?.coin as Address)
+        : null,
+    [router],
   );
 
   const memezFactoryConfig = useMemezFactoryConfig();
@@ -226,7 +237,7 @@ export function Index() {
   return (
     <>
       <PageHead title="memez" description="memez memecoins app" />
-      <div className="flex flex-col justify-center items-center">
+      <div className="flex flex-col justify-center items-center overflow-hidden">
         <h3 className="text-title font-medium text-center">
           Total memecoins: {count !== undefined ? Number(count) : 'loading...'}
         </h3>
@@ -238,52 +249,59 @@ export function Index() {
         >
           [create memecoin]
         </Link>
-        <div className="grid grid-col-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x4 my-x4">
-          {cachedMemecoinsPages[currentPage]?.map(
-            ({
-              name,
-              symbol,
-              description,
-              image,
-              cap,
-              reserveBalance,
-              owner,
-              address,
-            }) => (
-              <MemeCoinCard
-                key={address}
-                balance={reserveBalance}
-                cap={cap}
-                icon={image}
-                name={name}
-                symbol={symbol}
-                address={address}
-                description={description}
-                creatorAddress={owner}
-                creatorNickname={accounts[owner]?.nickname}
-                creatorProfilePicture={accounts[owner]?.profilePicture}
-              />
-            ),
+        <div className="flex flex-row w-full justify-center items-center overflow-hidden">
+          <div className="flex flex-col gap-x0.5 max-h-full overflow-auto">
+            {cachedMemecoinsPages
+              ?.flat()
+              ?.map(
+                ({
+                  name,
+                  symbol,
+                  description,
+                  image,
+                  cap,
+                  reserveBalance,
+                  owner,
+                  address,
+                }) => (
+                  <MemeCoinCard
+                    key={address}
+                    balance={reserveBalance}
+                    cap={cap}
+                    icon={image}
+                    name={name}
+                    symbol={symbol}
+                    address={address}
+                    description={description}
+                    creatorAddress={owner}
+                    creatorNickname={accounts[owner]?.nickname}
+                    creatorProfilePicture={accounts[owner]?.profilePicture}
+                    isDescriptionHidden={!!memeCoinAddress}
+                    isSelected={memeCoinAddress === address}
+                  />
+                ),
+              )}
+            <div className="flex flex-row gap-x2 justify-center items-center self-stretch">
+              <SecondaryButton
+                className="w-full"
+                disabled={
+                  isLoading ||
+                  !memecoinsPages[currentPage] ||
+                  memecoinsPages[currentPage].length < paginationLimit
+                }
+                onClick={goForward}
+              >
+                Load more
+              </SecondaryButton>
+            </div>
+          </div>
+          {!!memeCoinAddress && (
+            <CoinInfo
+              key={memeCoinAddress}
+              className="flex-1 h-full overflow-auto"
+              memeCoinAddress={memeCoinAddress}
+            />
           )}
-        </div>
-        <div className="flex flex-row gap-x2 items-center">
-          <SecondaryButton
-            disabled={isLoading || currentPage === 0}
-            onClick={goBack}
-          >
-            {'<'}
-          </SecondaryButton>
-          <span className="">{currentPage + 1}</span>
-          <SecondaryButton
-            disabled={
-              isLoading ||
-              !memecoinsPages[currentPage] ||
-              memecoinsPages[currentPage].length < paginationLimit
-            }
-            onClick={goForward}
-          >
-            {'>'}
-          </SecondaryButton>
         </div>
       </div>
     </>

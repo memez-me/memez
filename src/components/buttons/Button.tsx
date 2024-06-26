@@ -28,7 +28,7 @@ function Button({
       id={id}
       disabled={disabled}
       type="button"
-      className={`inline-flex gap-x1 flex-shrink-0 rounded-x1 items-center justify-center transition-all ${className}`}
+      className={`inline-flex gap-x1 flex-shrink-0 rounded-x1 backdrop-blur items-center justify-center transition-all ${className}`}
       onClick={clickHandler}
     >
       {children}

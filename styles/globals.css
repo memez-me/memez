@@ -5,7 +5,7 @@
 body {
     box-sizing: border-box;
     touch-action: none;
-    background-color: #2A3530;
+    background: linear-gradient(0deg, rgba(0, 0, 0, 0.30) 0%, rgba(0, 0, 0, 0.30) 100%), #313D38;
     color: #92FFCB;
     font-size: 17px;
     font-family: "Roboto Mono", consolas, monospace;

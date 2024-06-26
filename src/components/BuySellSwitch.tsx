@@ -9,7 +9,7 @@ function BuySellSwitch({ isBuy, onChange }: BuySellSwitchProps) {
   return (
     <div className="flex flex-row gap-x1">
       <div
-        className={`relative inline-flex gap-x1 flex-shrink-0 rounded-x1 items-center justify-center flex-1 transition-all px-x2 py-x1 h-x9 font-medium text-headline-2 ${isBuy ? 'bg-main-light text-main-black' : 'bg-main-black bg-opacity-30 text-main-accent'}`}
+        className={`relative inline-flex gap-x1 flex-shrink-0 rounded-x1 items-center justify-center flex-1 backdrop-blur transition-all px-x2 py-x1 h-x9 font-medium text-headline-2 ${isBuy ? 'bg-main-light text-main-black' : 'bg-main-black bg-opacity-30 text-main-accent'}`}
       >
         <input
           id="buy-radio"
@@ -27,7 +27,7 @@ function BuySellSwitch({ isBuy, onChange }: BuySellSwitchProps) {
         </label>
       </div>
       <div
-        className={`relative inline-flex gap-x1 flex-shrink-0 rounded-x1 items-center justify-center flex-1 transition-all px-x2 py-x1 h-x9 font-medium text-headline-2 ${!isBuy ? 'bg-second-sell text-main-black' : 'bg-main-black bg-opacity-30 text-main-accent'}`}
+        className={`relative inline-flex gap-x1 flex-shrink-0 rounded-x1 items-center justify-center flex-1 backdrop-blur transition-all px-x2 py-x1 h-x9 font-medium text-headline-2 ${!isBuy ? 'bg-second-sell text-main-black' : 'bg-main-black bg-opacity-30 text-main-accent'}`}
       >
         <input
           id="sell-radio"

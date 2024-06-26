@@ -10,6 +10,7 @@ type TextInputProps = {
   type?: HTMLInputTypeAttribute;
   disabled?: boolean;
   isError?: boolean;
+  isSmall?: boolean;
   min?: number;
   max?: number;
   step?: number;
@@ -26,6 +27,7 @@ function TextInput({
   type = 'text',
   disabled,
   isError,
+  isSmall,
   min = 0,
   max = undefined,
   step = 1,
@@ -35,9 +37,9 @@ function TextInput({
     <div className={`relative ${className}`}>
       <input
         id={id}
-        className={`p-x2 w-full h-x9 bg-main-black bg-opacity-10 font-medium text-title text-main-accent placeholder:text-main-shadow border-2 border-main-shadow ${
+        className={`p-x2 w-full ${isSmall ? 'h-x6' : 'h-x9'} bg-main-black bg-opacity-10 font-medium text-title text-main-accent placeholder:text-main-shadow border-2 border-main-shadow ${
           isError ? 'border-second-error' : 'enabled:hover:border-main-accent'
-        } rounded-x1 transition-all
+        } rounded-x1 backdrop-blur transition-all
           disabled:bg-main-black disabled:bg-opacity-30 disabled:border-main-gray disabled:text-main-light disabled:text-opacity-40 disabled:placeholder:text-main-gray
           enabled:hover:bg-main-grey enabled:hover:bg-opacity-50
           enabled:focus:bg-main-grey enabled:focus:bg-opacity-50 enabled:focus:border-main-accent enabled:focus:shadow-element enabled:focus:placeholder:text-transparent

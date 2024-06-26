@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import PageHead from '../components/PageHead';
-import Link from 'next/link';
 import {
   useAccount,
   useReadContract,
@@ -176,108 +175,104 @@ export function Profile() {
         description={`memez ${nicknameToShow ?? profileAddress} profile`}
       />
       <div className="flex flex-col justify-center items-center">
-        <Link
-          href="/"
-          passHref
-          rel="noreferrer"
-          className="disabled:shadow hover:font-bold hover:text-main-light focus:text-main-light active:text-main-shadow"
-        >
-          [go back]
-        </Link>
-        <div className="flex flex-col gap-4 w-full max-w-[420px] mt-6 text-body tracking-body">
+        <div className="flex flex-col gap-4 items-center w-full mt-6">
           {profileAddress !== zeroAddress ? (
             <>
-              <div className="flex flex-row gap-2">
-                <ProfileIcon
-                  address={profileAddress}
-                  size={64}
-                  src={profilePicture}
-                />
-                <div className="flex flex-col gap-1">
-                  <h1 className="text-title font-bold">
-                    {nicknameToShow || <i>No nickname</i>}
-                  </h1>
-                  <h2 className="text-body-2 font-medium">
-                    {trimAddress(profileAddress)}
-                  </h2>
+              <div className="flex flex-col gap-4 w-full max-w-[420px] text-body tracking-body">
+                <div className="flex flex-row gap-2">
+                  <ProfileIcon
+                    address={profileAddress}
+                    size={64}
+                    src={profilePicture}
+                  />
+                  <div className="flex flex-col gap-1">
+                    <h1 className="text-title font-bold">
+                      {nicknameToShow || <i>No nickname</i>}
+                    </h1>
+                    <h2 className="text-body-2 font-medium">
+                      {trimAddress(profileAddress)}
+                    </h2>
+                  </div>
                 </div>
-              </div>
-              {isCurrent &&
-                (isEditing ? (
-                  <>
-                    <TextInput
-                      value={nickname}
-                      placeholder="Nickname"
-                      type="text"
-                      disabled={isPending || isConfirming}
-                      onChange={(e) => setNickname(e.target.value)}
-                    />
-                    {/*<TextInput*/}
-                    {/*  placeholder="Profile picture"*/}
-                    {/*  type="file"*/}
-                    {/*  onChange={(e) => {*/}
-                    {/*    const file = e.target.files?.[0];*/}
-                    {/*    if (!file) return;*/}
-                    {/*    const reader = new FileReader();*/}
-                    {/*    reader.readAsDataURL(file);*/}
-                    {/*    reader.onload = (ev) => {*/}
-                    {/*      const imageData = ev.target?.result;*/}
-                    {/*      if (!imageData) return;*/}
-                    {/*      setProfilePicture(imageData.toString());*/}
-                    {/*    };*/}
-                    {/*  }}*/}
-                    {/*  accept="image/*"*/}
-                    {/*/>*/}
-                    <PrimaryButton
-                      disabled={!data?.request || isPending || isConfirming}
-                      onClick={saveChanges}
-                    >
-                      {isPending || isConfirming
-                        ? 'Saving changes...'
-                        : 'Save changes'}
+                {isCurrent &&
+                  (isEditing ? (
+                    <>
+                      <TextInput
+                        value={nickname}
+                        placeholder="Nickname"
+                        type="text"
+                        disabled={isPending || isConfirming}
+                        onChange={(e) => setNickname(e.target.value)}
+                      />
+                      {/*<TextInput*/}
+                      {/*  placeholder="Profile picture"*/}
+                      {/*  type="file"*/}
+                      {/*  onChange={(e) => {*/}
+                      {/*    const file = e.target.files?.[0];*/}
+                      {/*    if (!file) return;*/}
+                      {/*    const reader = new FileReader();*/}
+                      {/*    reader.readAsDataURL(file);*/}
+                      {/*    reader.onload = (ev) => {*/}
+                      {/*      const imageData = ev.target?.result;*/}
+                      {/*      if (!imageData) return;*/}
+                      {/*      setProfilePicture(imageData.toString());*/}
+                      {/*    };*/}
+                      {/*  }}*/}
+                      {/*  accept="image/*"*/}
+                      {/*/>*/}
+                      <PrimaryButton
+                        disabled={!data?.request || isPending || isConfirming}
+                        onClick={saveChanges}
+                      >
+                        {isPending || isConfirming
+                          ? 'Saving changes...'
+                          : 'Save changes'}
+                      </PrimaryButton>
+                    </>
+                  ) : (
+                    <PrimaryButton onClick={() => setIsEditing(true)}>
+                      Edit profile
                     </PrimaryButton>
-                  </>
-                ) : (
-                  <PrimaryButton onClick={() => setIsEditing(true)}>
-                    Edit profile
-                  </PrimaryButton>
-                ))}
-              {isConfirmed && (
-                <p className="text-second-success">Changes saved!</p>
-              )}
-              {simulationError && (
-                <p className="text-second-error">Error: {simulationError}</p>
-              )}
+                  ))}
+                {isConfirmed && (
+                  <p className="text-second-success">Changes saved!</p>
+                )}
+                {simulationError && (
+                  <p className="text-second-error">Error: {simulationError}</p>
+                )}
+              </div>
               {memecoinsData.length > 0 && (
                 <h3 className="text-title font-medium text-center">
                   Created Coins: {memecoinsData.length}
                 </h3>
               )}
-              {memecoinsData.map(
-                ({
-                  address,
-                  name,
-                  symbol,
-                  description,
-                  image,
-                  cap,
-                  reserveBalance,
-                }) => (
-                  <MemeCoinCard
-                    key={address}
-                    address={address}
-                    balance={reserveBalance}
-                    cap={cap}
-                    icon={image}
-                    name={name}
-                    symbol={symbol}
-                    description={description}
-                    creatorAddress={profileAddress}
-                    creatorNickname={nicknameToShow}
-                    creatorProfilePicture={profilePicture}
-                  />
-                ),
-              )}
+              <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 px-x2 py-x0.5 gap-x3 max-h-full overflow-auto">
+                {memecoinsData.map(
+                  ({
+                    address,
+                    name,
+                    symbol,
+                    description,
+                    image,
+                    cap,
+                    reserveBalance,
+                  }) => (
+                    <MemeCoinCard
+                      key={address}
+                      address={address}
+                      balance={reserveBalance}
+                      cap={cap}
+                      icon={image}
+                      name={name}
+                      symbol={symbol}
+                      description={description}
+                      creatorAddress={profileAddress}
+                      creatorNickname={nicknameToShow}
+                      creatorProfilePicture={profilePicture}
+                    />
+                  ),
+                )}
+              </div>
             </>
           ) : (
             <p className="text-second-error">

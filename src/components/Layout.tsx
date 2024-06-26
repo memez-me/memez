@@ -23,8 +23,10 @@ export function Layout({ children }: { children: ReactNode }) {
 
   return (
     <>
-      <div className={`flex flex-col w-full h-full ${robotoMono.className}`}>
-        <div className="flex landscape:flex-row portrait:flex-col items-center self-stretch gap-x2 p-x4 lg:px-x11 rounded-b-[20px] bg-main-grey bg-opacity-50">
+      <div
+        className={`flex flex-col w-full h-full z-[1] ${robotoMono.className}`}
+      >
+        <div className="flex landscape:flex-row portrait:flex-col items-center self-stretch gap-x2 px-x4 lg:px-x11 py-x2 rounded-b-[20px] bg-main-grey bg-opacity-50">
           <Link
             href="/"
             passHref
@@ -50,10 +52,43 @@ export function Layout({ children }: { children: ReactNode }) {
             )}
           </div>
         </div>
-        <div className="flex flex-col flex-1 p-4 md:p-8 overflow-auto">
+        <div
+          id="main"
+          className="flex flex-col flex-1 p-4 md:p-8 overflow-auto"
+        >
           {children}
         </div>
       </div>
+      <svg
+        className="absolute inset-x-0 bottom-0 w-screen h-[53vh] pointer-events-none z-0"
+        xmlns="http://www.w3.org/2000/svg"
+        width="1920"
+        height="575"
+        viewBox="0 0 1920 575"
+        fill="none"
+      >
+        <path
+          opacity="0.5"
+          fillRule="evenodd"
+          clipRule="evenodd"
+          d="M1920 0L1812.8 21.5185C1707.2 43.037 1492.8 86.0741 1280 182.907C1067.2 279.741 852.8 430.37 640 451.889C427.2 473.407 212.8 365.815 107.2 312.019L0.00012207 258.222V581H107.2C212.8 581 427.2 581 640 581C852.8 581 1067.2 581 1280 581C1492.8 581 1707.2 581 1812.8 581H1920V0Z"
+          fill="url(#paint0_linear_376_926)"
+          fillOpacity="0.2"
+        />
+        <defs>
+          <linearGradient
+            id="paint0_linear_376_926"
+            x1="960"
+            y1="0"
+            x2="960"
+            y2="581"
+            gradientUnits="userSpaceOnUse"
+          >
+            <stop stopColor="#92FFCB" stopOpacity="0.8" />
+            <stop offset="1" stopColor="#58997A" stopOpacity="0.02" />
+          </linearGradient>
+        </defs>
+      </svg>
       <div id="modals-container" />
     </>
   );

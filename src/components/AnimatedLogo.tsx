@@ -15,8 +15,8 @@ function AnimatedLogo({
     <div className="inline-flex flex-row">
       <svg
         xmlns="http://www.w3.org/2000/svg"
-        width={312 - 54}
-        height={32}
+        width={((312 - 54) * 22.4) / 32}
+        height={22.4}
         // viewBox="24 24 312 32"
         viewBox="24 24 258 32"
         fill="none"
@@ -46,8 +46,8 @@ function AnimatedLogo({
       {/*TODO: merge SVGs*/}
       <svg
         xmlns="http://www.w3.org/2000/svg"
-        width="50"
-        height="32"
+        width={(50 * 22.4) / 32}
+        height={22.4}
         viewBox="-4 0 50 32"
         fill="none"
       >

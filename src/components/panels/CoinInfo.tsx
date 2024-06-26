@@ -47,10 +47,7 @@ export function CoinInfo({ memeCoinAddress, className }: CoinInfoProps) {
   const { address } = useAccount();
   const client = useClient();
   const [isBuy, setIsBuy] = useState(true);
-  const [isEditing, setIsEditing] = useState(false);
-  const [description, setDescription] = useState('');
-  const [coinIcon, setCoinIcon] = useState('');
-  const [amount, setAmount] = useState<string | number>(0);
+  const [amount, setAmount] = useState<string | number>('');
   const [isEventLongPolling, setIsEventLongPolling] = useState(true); // it seems that Tenderly has some problems with events watching
 
   const memezFactoryConfig = useMemezFactoryConfig();
@@ -329,17 +326,10 @@ export function CoinInfo({ memeCoinAddress, className }: CoinInfoProps) {
   );
 
   const chartOptions = useChartOptions({
-    chartTitle: 'Bonding curve progress',
     titleX: 'Supply',
     titleY: 'Price',
     point: currentProgressPoint,
   });
-
-  useEffect(() => {
-    if (!data) return;
-    setDescription((old) => data[7].result || old);
-    setCoinIcon((old) => data[8].result || old);
-  }, [data]);
 
   const { data: ownerData } = useReadContract({
     ...memezFactoryConfig,
@@ -415,195 +405,134 @@ export function CoinInfo({ memeCoinAddress, className }: CoinInfoProps) {
     [data, isBuy],
   );
 
-  const { data: updateData, error: updateError } = useSimulateContract({
-    ...memeCoinConfig,
-    functionName: 'updateMetadata',
-    args: [description, coinIcon],
-    query: {
-      enabled: !!address && !!data && address === data[6].result && isEditing,
-    },
-  });
-
-  const updateSimulationError = useMemo(
-    () =>
-      updateError
-        ? (updateError.cause as any)?.reason ?? updateError.message
-        : null,
-    [updateError],
-  );
-
-  const {
-    data: updateHash,
-    writeContractAsync: writeUpdateContractAsync,
-    isPending: isUpdatePending,
-    reset: resetUpdate,
-  } = useWriteContract();
-
-  const { isLoading: isUpdateConfirming, isSuccess: isUpdateConfirmed } =
-    useWaitForTransactionReceipt({ hash: updateHash });
-
-  const updateDescription = useCallback(() => {
-    writeUpdateContractAsync(updateData!.request)
-      .then(() => {
-        refetchData().then(() => {
-          setIsEditing(false);
-          resetUpdate();
-        });
-      })
-      .catch((e) => console.error(e));
-  }, [writeUpdateContractAsync, updateData, refetchData, resetUpdate]);
-
   return (
     <div
-      className={`flex flex-col p-x2 rounded-x1 bg-main-gray items-center ${className}`}
+      className={`flex flex-row portrait:flex-col-reverse py-x1 px-x1 md:px-x3 lg:px-x7 xl:px-x11 gap-x3 rounded-x1 bg-transparent items-start ${className}`}
     >
-      <Link
-        href="/"
-        passHref
-        rel="noreferrer"
-        className="disabled:shadow hover:font-bold hover:text-main-light focus:text-main-light active:text-main-shadow"
-      >
-        [close]
-      </Link>
-      <div className="flex flex-col gap-4 w-full mt-6 text-body tracking-body">
-        {data && data.every((d) => d.status === 'success') && !isError ? (
-          <>
-            <div className="flex flex-row portrait:flex-col gap-x2">
-              <CoinIcon
-                className="mx-auto"
-                address={memeCoinAddress}
-                size={128}
-                symbol={data[2].result ?? '$$$'}
-                src={isEditing ? coinIcon : data[8].result}
-              />
-              <div className="flex flex-col gap-x2 flex-1 text-body font-medium tracking-body">
-                <p>
-                  Token name: <span>{data[1].result}</span>
-                </p>
-                <p>
-                  Token symbol: <span>{data[2].result}</span>
-                </p>
-                <p>
-                  Token creator:{' '}
-                  <Link
-                    href={`/profile?address=${data[6].result}`}
-                    passHref
-                    rel="noreferrer"
-                    className="disabled:shadow hover:font-bold hover:text-main-light focus:text-main-light active:text-main-shadow"
-                  >
-                    {!ownerData ? (
-                      trimAddress(data[6].result ?? zeroAddress)
-                    ) : (
-                      <>
-                        <ProfileIcon
-                          className="inline"
-                          address={data[6].result ?? zeroAddress}
-                          size={16}
-                          src={ownerData[1]}
-                        />{' '}
-                        {ownerData[0] || trimAddress(data[6].result!)}
-                      </>
-                    )}{' '}
-                    {address === data[6].result && <i>(You)</i>}
-                  </Link>
-                </p>
-              </div>
-            </div>
-            {(isEditing || data[7].result) && (
-              <p className="max-h-x10 px-x3 py-x2 bg-main-black bg-opacity-10 rounded-x1 overflow-auto text-main-accent font-bold text-body-2 tracking-body">
-                {isEditing ? description : data[7].result}
-              </p>
-            )}
-            {!!address &&
-              address === data[6].result &&
-              data[3].result &&
-              data[3].result > 0n &&
-              (isEditing ? (
-                <>
-                  <TextInput
-                    value={description}
-                    placeholder="Description"
-                    type="text"
-                    disabled={isUpdatePending || isUpdateConfirming}
-                    onChange={(e) => setDescription(e.target.value)}
-                  />
-                  <PrimaryButton
-                    className="mx-auto"
-                    disabled={
-                      !updateData?.request ||
-                      isUpdatePending ||
-                      isUpdateConfirming
-                    }
-                    onClick={updateDescription}
-                  >
-                    {isUpdateConfirming || isUpdatePending
-                      ? 'Updating description...'
-                      : 'Update description'}
-                  </PrimaryButton>
-                  {isUpdateConfirmed && (
-                    <p className="text-second-success">Description updated!</p>
-                  )}
-                  {updateSimulationError && (
-                    <p className="text-second-error">
-                      Error: {updateSimulationError}
-                    </p>
-                  )}
-                </>
+      {data && data.every((d) => d.status === 'success') && !isError ? (
+        <>
+          <div className="flex flex-col flex-1 gap-x3 p-x1 landscape:overflow-auto landscape:h-full portrait:w-full">
+            <h3 className="font-bold text-headline-2 text-shadow">
+              {data[1].result} CANDLES
+            </h3>
+            <div className="w-full h-[52vh] portrait:h-[90vw] shrink-0 bg-main-gray bg-opacity-50 rounded-x1 content-center">
+              {candlestickData ? (
+                <LightweightChart
+                  className="h-full"
+                  data={candlestickData}
+                  candlestickOptions={{
+                    priceFormat: candlestickPriceFormat,
+                  }}
+                />
               ) : (
-                <PrimaryButton
+                <p className="text-center">
+                  Not enough data for candlestick chart
+                </p>
+              )}
+            </div>
+            <Chat className="w-full" memecoin={memeCoinAddress} />
+          </div>
+          <div className="flex flex-col p-x1 landscape:overflow-auto landscape:h-full portrait:w-full">
+            <div className="flex flex-col gap-x2 p-x3 w-[460px] max-w-full rounded-x1 bg-gradient-to-b from-main-accent/16 border-2 border-main-shadow backdrop-blur">
+              <div className="flex flex-row portrait:flex-col gap-x4 portrait:gap-x2">
+                <CoinIcon
                   className="mx-auto"
-                  onClick={() => setIsEditing(true)}
-                >
-                  Edit description
-                </PrimaryButton>
-              ))}
-            {data[3].result && data[3].result > 0n ? (
-              <div className="flex flex-row portrait:flex-col gap-x2">
-                <div className="flex-1 landscape:max-w-[50%] content-center">
-                  {chartData && (
-                    <ApexChart
-                      options={chartOptions}
-                      series={[{ data: chartData }]}
-                      type="area"
-                      width="100%"
-                      height="256"
-                    />
-                  )}
-                </div>
-                <div className="flex-1 landscape:max-w-[50%] content-center">
-                  {candlestickData ? (
-                    <LightweightChart
-                      className="h-[256px]"
-                      data={candlestickData}
-                      candlestickOptions={{
-                        priceFormat: candlestickPriceFormat,
-                      }}
-                    />
-                  ) : (
-                    <p className="text-center">
-                      Not enough data for candlestick chart
+                  address={memeCoinAddress}
+                  size={120}
+                  symbol={data[2].result ?? '$$$'}
+                  src={data[8].result}
+                />
+                <div className="flex flex-col gap-x2 flex-1 text-body font-medium tracking-body">
+                  <h3 className="font-bold text-title text-shadow">
+                    {data[1].result}
+                  </h3>
+                  <div className="flex flex-col gap-x0.5 text-body font-medium tracking-body">
+                    <p className="text-body-2 font-medium tracking-body">
+                      Symbol: <span>{data[2].result}</span>
                     </p>
-                  )}
+                    <p className="flex flex-row flex-nowrap items-center gap-x2 text-nowrap overflow-hidden overflow-ellipsis">
+                      <span>Created by</span>
+                      <Link
+                        href={`/profile?address=${data[6].result}`}
+                        passHref
+                        rel="noreferrer"
+                        className="flex flex-row flex-1 flex-nowrap items-center gap-x1 text-nowrap overflow-hidden overflow-ellipsis disabled:shadow hover:font-bold hover:text-shadow focus:text-shadow active:text-shadow"
+                      >
+                        {!ownerData ? (
+                          <span>
+                            {trimAddress(data[6].result ?? zeroAddress)}
+                          </span>
+                        ) : (
+                          <>
+                            <ProfileIcon
+                              className="inline shrink-0"
+                              address={data[6].result ?? zeroAddress}
+                              size={24}
+                              src={ownerData[1]}
+                            />
+                            <span className="text-footnote font-regular tracking-footnote text-main-shadow bg-main-accent rounded-x0.5 h-x3 px-x0.5 content-center overflow-hidden overflow-ellipsis">
+                              {ownerData[0] || trimAddress(data[6].result!)}
+                            </span>
+                          </>
+                        )}
+                      </Link>
+                    </p>
+                    <p>
+                      Cap:{' '}
+                      <span>
+                        {data[3]?.result ? formatEther(data[3].result) : '???'}{' '}
+                        ETH
+                      </span>
+                    </p>
+                  </div>
                 </div>
               </div>
-            ) : (
-              <p>
-                Status: <b>Already listed</b>
-              </p>
-            )}
-            {!!address && (
-              <p className="text-center text-body font-medium tracking-body">
-                My balance: <span>{formatEther(data[5].result ?? 0n)}</span>{' '}
-                <span className="font-bold">{data[2].result}</span>
-              </p>
-            )}
+              <div className="flex flex-row gap-x0.5 justify-around">
+                <Link
+                  href={`#TODO`}
+                  passHref
+                  rel="noreferrer"
+                  className="inline-flex px-x1 py-x0.5 text-body font-medium tracking-body uppercase hover:text-shadow active:text-shadow active:text-main-light"
+                >
+                  [Website]{/*TODO: load links*/}
+                </Link>
+                <Link
+                  href={`#TODO`}
+                  passHref
+                  rel="noreferrer"
+                  className="inline-flex px-x1 py-x0.5 text-body font-medium tracking-body uppercase hover:text-shadow active:text-shadow active:text-main-light"
+                >
+                  [Telegram]{/*TODO: load links*/}
+                </Link>
+                <Link
+                  href={`#TODO`}
+                  passHref
+                  rel="noreferrer"
+                  className="inline-flex px-x1 py-x0.5 text-body font-medium tracking-body uppercase hover:text-shadow active:text-shadow active:text-main-light"
+                >
+                  [Twitter]{/*TODO: load links*/}
+                </Link>
+              </div>
+              {data[7].result && (
+                <p className="bg-main-black bg-opacity-30 rounded-x1 px-x3 py-x2 text-body-2 font-medium tracking-body">
+                  {data[7].result}
+                </p>
+              )}
+            </div>
             {data[3].result && data[3].result > 0n && (
-              <div className="flex flex-col gap-x3">
-                <div className="flex flex-row gap-x1">
+              <>
+                <div className="flex flex-col gap-x1 p-x3">
+                  {!!address && (
+                    <p className="font-bold text-headline-2 text-shadow mb-x1">
+                      My balance:{' '}
+                      <span>{formatEther(data[5].result ?? 0n)}</span>{' '}
+                      <span className="font-bold">{data[2].result}</span>
+                    </p>
+                  )}
                   <TextInput
                     className="flex-1"
                     value={amount}
-                    placeholder="Amount"
+                    placeholder={`0.0 ${isBuy ? 'ETH' : data[2].result}`}
                     type="number"
                     min={0}
                     step={0.001}
@@ -615,63 +544,85 @@ export function CoinInfo({ memeCoinAddress, className }: CoinInfoProps) {
                     }
                     onMax={data ? setAmountToMax : undefined}
                   />
-                  <span className="text-title font-extrabold self-center">
-                    {isBuy ? 'ETH' : data[2].result}
-                  </span>
+                  <div className="flex flex-col gap-x1 w-full">
+                    <BuySellSwitch isBuy={isBuy} onChange={setIsBuy} />
+                    <PrimaryButton
+                      className={`h-x9 ${
+                        isBuy
+                          ? 'bg-main-light disabled:bg-main-light disabled:bg-opacity-40 enabled:hover:bg-main-accent enabled:focus:bg-main-accent enabled:active:bg-main-light enabled:active:bg-opacity-40'
+                          : 'bg-second-sell disabled:bg-second-sell disabled:bg-opacity-40 enabled:hover:bg-second-error enabled:focus:bg-second-error enabled:active:bg-second-sell enabled:active:bg-opacity-40'
+                      }`}
+                      disabled={
+                        !!currentSimulationError ||
+                        isPending ||
+                        isConfirming ||
+                        isConfirmed ||
+                        !amount ||
+                        Number(amount) <= 0 ||
+                        (isBuy ? !mintData : !retireData)
+                      }
+                      onClick={
+                        isBuy
+                          ? () => writeContract(mintData!.request)
+                          : () => writeContract(retireData!.request)
+                      }
+                    >
+                      {isPending || isConfirming
+                        ? isBuy
+                          ? 'Buying...'
+                          : 'Selling...'
+                        : 'Place trade'}
+                    </PrimaryButton>
+                    {isConfirmed && (
+                      <p className="text-second-success">
+                        Transaction confirmed!
+                      </p>
+                    )}
+                    {!!simulationErrorMessage && (
+                      <p className="text-second-error">
+                        Error: {simulationErrorMessage}
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <div className="flex flex-col gap-x1 w-full">
-                  <BuySellSwitch isBuy={isBuy} onChange={setIsBuy} />
-                  <PrimaryButton
-                    className={`h-x9 ${
-                      isBuy
-                        ? 'bg-main-light disabled:bg-main-light disabled:bg-opacity-40 enabled:hover:bg-main-accent enabled:focus:bg-main-accent enabled:active:bg-main-light enabled:active:bg-opacity-40'
-                        : 'bg-second-sell disabled:bg-second-sell disabled:bg-opacity-40 enabled:hover:bg-second-error enabled:focus:bg-second-error enabled:active:bg-second-sell enabled:active:bg-opacity-40'
-                    }`}
-                    disabled={
-                      !!currentSimulationError ||
-                      isPending ||
-                      isConfirming ||
-                      isConfirmed ||
-                      !amount ||
-                      Number(amount) <= 0 ||
-                      (isBuy ? !mintData : !retireData)
-                    }
-                    onClick={
-                      isBuy
-                        ? () => writeContract(mintData!.request)
-                        : () => writeContract(retireData!.request)
-                    }
-                  >
-                    {isPending || isConfirming
-                      ? isBuy
-                        ? 'Buying...'
-                        : 'Selling...'
-                      : 'Place trade'}
-                  </PrimaryButton>
-                  {isConfirmed && (
-                    <p className="text-second-success">
-                      Transaction confirmed!
-                    </p>
-                  )}
-                  {!!simulationErrorMessage && (
-                    <p className="text-second-error">
-                      Error: {simulationErrorMessage}
-                    </p>
-                  )}
-                </div>
-                <Chat className="w-full" memecoin={memeCoinAddress} />
-              </div>
+                {data[3].result && data[3].result > 0n ? (
+                  <div className="flex flex-col gap-x2 p-x3">
+                    <h3 className="font-bold text-headline-2 text-shadow">
+                      Bonding curve progress
+                    </h3>
+                    <div className="w-full h-auto aspect-square p-x2 xl:p-x3 bg-main-gray bg-opacity-50 rounded-x1 content-center">
+                      {chartData ? (
+                        <ApexChart
+                          options={chartOptions}
+                          series={[{ data: chartData }]}
+                          type="area"
+                          width="100%"
+                          height="100%"
+                        />
+                      ) : (
+                        <p className="text-center">
+                          Not enough data for bonding curve chart
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <p>
+                    Status: <b>Already listed</b>
+                  </p>
+                )}
+              </>
             )}
-          </>
-        ) : (
-          <p className="text-second-error text-center">
-            Error:
-            {data && data[0].status === 'success' && !data[0].result
-              ? ' token address is not legit!'
-              : ' cannot get token information!'}
-          </p>
-        )}
-      </div>
+          </div>
+        </>
+      ) : (
+        <p className="w-full self-center text-second-error text-center text-body tracking-body">
+          Error:
+          {data && data[0].status === 'success' && !data[0].result
+            ? ' token address is not legit!'
+            : ' cannot get token information!'}
+        </p>
+      )}
     </div>
   );
 }

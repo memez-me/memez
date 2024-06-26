@@ -30,7 +30,7 @@ export const useChartOptions = ({
                 color: '#92FFCB',
               },
             }
-          : undefined,
+          : {},
         chart: {
           foreColor: 'transparent',
           background: 'transparent',

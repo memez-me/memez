@@ -40,6 +40,9 @@ module.exports = {
           text: 'rgba(0, 255, 133, 0.50)',
         },
       },
+      opacity: {
+        16: '0.16',
+      },
       boxShadow: {
         element:
           '0px 0px 8px 0px var(--tw-shadow-color, rgba(0, 255, 133, 0.50))',

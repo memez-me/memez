@@ -171,19 +171,20 @@ function Chat({ memecoin, className }: ChatProps) {
     useWriteContract();
 
   return (
-    <div className={`flex flex-col gap-x2 ${className}`}>
-      <h1 className="text-title font-medium text-center">Chat</h1>
-      <div className="flex flex-row gap-x1">
+    <div className={`flex flex-col gap-x3 ${className}`}>
+      <h2 className="font-bold text-headline-2 text-shadow">Chat</h2>
+      <div className="sticky top-0 flex flex-row gap-x1">
         <TextInput
           className="flex-1"
           value={text}
-          placeholder="Text message"
+          placeholder="Send message"
           type="text"
+          isSmall
           disabled={isAddMessagePending || isAddMessageConfirming}
           onChange={(e) => setText(e.target.value)}
         />
         <PrimaryButton
-          className="h-x9"
+          isSmall
           disabled={
             !addMessageData?.request ||
             isAddMessagePending ||
@@ -199,7 +200,7 @@ function Chat({ memecoin, className }: ChatProps) {
       {addMessageSimulationError && (
         <p className="text-second-error">Error: {addMessageSimulationError}</p>
       )}
-      <div className="flex flex-col-reverse gap-x2">
+      <div className="flex flex-col-reverse gap-x2 overflow-x-hidden">
         {messages && messages.length > 0 ? (
           messages
             .filter((m) => !!m.result)

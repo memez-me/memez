@@ -1,37 +1,72 @@
-import {
-  time,
-  loadFixture,
-} from '@nomicfoundation/hardhat-toolbox-viem/network-helpers';
+import { loadFixture } from '@nomicfoundation/hardhat-toolbox-viem/network-helpers';
 import { expect } from 'chai';
 import hre, { ignition, viem } from 'hardhat';
-import { parseEther, getContract, Address, zeroAddress } from 'viem';
+import { parseEther } from 'viem';
 import MemezFactory from '../ignition/modules/MemezFactory';
 import MockERC20 from '../ignition/modules/MockERC20';
-import { fraxswapRouterAbi } from '../contracts/fraxswapRouter.abi';
-import { fraxswapFactoryAbi } from '../contracts/fraxswapFactory.abi';
+import MockMEMEZ from '../ignition/modules/MockMEMEZ';
 
 describe('Memez', function () {
-  async function deployMemezFactory() {
-    const { memezFactory } = await ignition.deploy(MemezFactory);
+  async function deployMEMEZ() {
+    const { mockMEMEZ } = await ignition.deploy(MockMEMEZ);
+    return mockMEMEZ;
+  }
+
+  async function deployMemezFactory(
+    memezAddress?: string,
+    treasuryAddress?: string,
+  ) {
+    let memez: string;
+    if (!memezAddress) {
+      memez = (await deployMEMEZ()).address;
+    } else {
+      memez = memezAddress;
+    }
+    let treasury: string;
+    if (!treasuryAddress) {
+      const [sender1] = await viem.getWalletClients();
+      treasury = sender1.account.address;
+    } else {
+      treasury = treasuryAddress;
+    }
+    const { memezFactory } = await ignition.deploy(MemezFactory, {
+      parameters: {
+        MemezFactory: {
+          treasury,
+          memez,
+        },
+      },
+    });
     return memezFactory;
   }
 
   async function deployMemeCoin(
-    factory: any,
+    factory: Awaited<ReturnType<typeof deployMemezFactory>>,
     name: string,
     symbol: string,
     cap: bigint,
+    powerN: bigint | number = 3,
+    powerD: bigint | number = 1,
+    factorN: bigint | number = 1000,
+    factorD: bigint | number = 1,
+    description: string = '*description*',
+    image: string = '*image*',
   ) {
     const [sender1] = await viem.getWalletClients();
-    await factory.write.deploy([name, symbol, cap]);
+    await factory.write.deploy([
+      cap,
+      Number(powerN),
+      Number(powerD),
+      Number(factorN),
+      Number(factorD),
+      name,
+      symbol,
+      description,
+      image,
+    ]);
     return await viem.getContractAt(
       'MemeCoin',
-      await factory.read.getAddress([
-        name,
-        symbol,
-        cap,
-        sender1.account.address,
-      ]),
+      await factory.read.getAddress([symbol]),
     );
   }
 
@@ -53,7 +88,7 @@ describe('Memez', function () {
   }
 
   describe('Deployment', function () {
-    it('Should succesfully deploy formula and token factory', async function () {
+    it('Should successfully deploy formula and token factory', async function () {
       const factory = await loadFixture(deployMemezFactory);
       const formulaAddr = await factory.read.formula();
       const formula = await viem.getContractAt('Formula', formulaAddr);
@@ -69,7 +104,7 @@ describe('Memez', function () {
         factory,
         'Test',
         'TST',
-        parseEther('0.003'),
+        parseEther('30'),
       );
       const events = await factory.getEvents.MemeCoinDeployed();
 
@@ -99,17 +134,15 @@ describe('Memez', function () {
         factory,
         'Test',
         'TST',
-        parseEther('0.003'),
+        parseEther('30'),
       );
       const sameDeployment = deployMemeCoin(
         factory,
         'Test',
         'TST',
-        parseEther('0.003'),
+        parseEther('30'),
       );
-      await expect(sameDeployment).to.be.revertedWith(
-        'The token with such parameters has been already deployed',
-      );
+      await expect(sameDeployment).to.be.revertedWith('Symbol is already used');
     });
   });
 
@@ -170,7 +203,7 @@ describe('Memez', function () {
         factory,
         'Test',
         'TST',
-        parseEther('0.003'),
+        parseEther('30'),
       );
 
       const ownerAddress = await memecoin.read.owner();
@@ -191,7 +224,7 @@ describe('Memez', function () {
         factory,
         'Test',
         'TST',
-        parseEther('0.003'),
+        parseEther('30'),
       );
 
       const [, , updatedUsersCount] = await factory.read.accounts([
@@ -200,7 +233,7 @@ describe('Memez', function () {
       const updatedAllCount = await factory.read.allMemecoinsCount();
 
       expect(updatedUsersCount).to.be.equal(initialUsersCount + 1n);
-      expect(updatedAllCount).to.be.equal(initialAllCount + 1n);
+      expect(updatedAllCount).to.be.equal(initialAllCount + 1);
 
       const lastUserMemecoin = await factory.read.memecoinsByCreators([
         sender1.account.address,
@@ -219,129 +252,6 @@ describe('Memez', function () {
     });
   });
 
-  describe('Chat', function () {
-    it('Should add message to deployed MemeCoin thread', async function () {
-      const factory = await loadFixture(deployMemezFactory);
-      const [sender1] = await viem.getWalletClients();
-      const memecoin = await deployMemeCoin(
-        factory,
-        'Test',
-        'TST',
-        parseEther('0.003'),
-      );
-
-      const memecoinAddress = memecoin.address;
-
-      const text = '*My text message*';
-
-      await expect(factory.write.addMessage([memecoinAddress, text])).to.emit(
-        factory,
-        'MessageCreated',
-      );
-
-      const events = await factory.getEvents.MessageCreated(
-        {},
-        {
-          fromBlock: 0n,
-        },
-      );
-
-      expect(events.length).to.be.equal(1);
-
-      expect(events[0].args.memecoinThread?.toLowerCase()).to.be.equal(
-        memecoinAddress.toLowerCase(),
-      );
-      expect(events[0].args.sender?.toLowerCase()).to.be.equal(
-        sender1.account.address.toLowerCase(),
-      );
-      expect(events[0].args.messageIndex).to.be.equal(0n);
-    });
-
-    it('Should not add message to invalid thread', async function () {
-      const factory = await loadFixture(deployMemezFactory);
-
-      const text = '*My text message*';
-
-      await expect(
-        factory.write.addMessage([factory.address, text]),
-      ).to.be.revertedWith('Memecoin is not legit');
-    });
-
-    it('Should like message', async function () {
-      const factory = await loadFixture(deployMemezFactory);
-      const [sender1] = await viem.getWalletClients();
-      const memecoin = await deployMemeCoin(
-        factory,
-        'Test',
-        'TST',
-        parseEther('0.003'),
-      );
-
-      const memecoinAddress = memecoin.address;
-
-      const text = '*My text message*';
-
-      await factory.write.addMessage([memecoinAddress, text]);
-
-      await expect(factory.write.likeMessage([memecoinAddress, 0n])).to.emit(
-        factory,
-        'MessageLiked',
-      );
-
-      const events = await factory.getEvents.MessageLiked(
-        {},
-        {
-          fromBlock: 0n,
-        },
-      );
-
-      expect(events.length).to.be.equal(1);
-
-      expect(events[0].args.memecoinThread?.toLowerCase()).to.be.equal(
-        memecoinAddress.toLowerCase(),
-      );
-      expect(events[0].args.sender?.toLowerCase()).to.be.equal(
-        sender1.account.address.toLowerCase(),
-      );
-      expect(events[0].args.messageIndex).to.be.equal(0n);
-
-      const [, , , likesCount] = await factory.read.threads([
-        memecoinAddress,
-        0n,
-      ]);
-
-      expect(likesCount).to.be.equal(1);
-    });
-
-    it('Should not like message that does not exist', async function () {
-      const factory = await loadFixture(deployMemezFactory);
-
-      await expect(factory.write.likeMessage([factory.address, 0n])).to.be
-        .reverted;
-    });
-
-    it('Should not like message twice', async function () {
-      const factory = await loadFixture(deployMemezFactory);
-      const memecoin = await deployMemeCoin(
-        factory,
-        'Test',
-        'TST',
-        parseEther('0.003'),
-      );
-
-      const memecoinAddress = memecoin.address;
-
-      const text = '*My text message*';
-
-      await factory.write.addMessage([memecoinAddress, text]);
-
-      await factory.write.likeMessage([memecoinAddress, 0n]);
-      await expect(
-        factory.write.likeMessage([memecoinAddress, 0n]),
-      ).to.be.revertedWith('Message is already liked');
-    });
-  });
-
   describe('Token Mechanics', function () {
     describe('Basic buy/sell', function () {
       it('Subsequent buyer gets tokens by increased price', async function () {
@@ -351,14 +261,14 @@ describe('Memez', function () {
           factory,
           'Test',
           'TST',
-          parseEther('0.03'),
+          parseEther('30'),
         );
-        const value = parseEther('0.01');
-        await memecoin.write.mint({
+        const value = parseEther('10');
+        await memecoin.write.mint([0n], {
           value,
           account: sender1.account,
         });
-        await memecoin.write.mint({
+        await memecoin.write.mint([0n], {
           value,
           account: sender2.account,
         });
@@ -403,15 +313,15 @@ describe('Memez', function () {
           factory,
           'Test',
           'TST',
-          parseEther('0.03'),
+          parseEther('30'),
         );
-        const value = parseEther('0.01');
-        await memecoin.write.mint({
+        const value = parseEther('10');
+        await memecoin.write.mint([0n], {
           value,
           account: sender.account,
         });
         const balance = await memecoin.read.balanceOf([sender.account.address]);
-        await memecoin.write.retire([balance], { account: sender.account });
+        await memecoin.write.retire([balance, 0n], { account: sender.account });
 
         const sells = await memecoin.getEvents.Retire(
           {},
@@ -424,7 +334,10 @@ describe('Memez', function () {
           sender.account.address.toLowerCase(),
         );
         expect(sells[0].args.amount).to.be.equal(balance);
-        expect(sells[0].args.liquidity).to.be.approximately(value, 10000000000);
+        expect(sells[0].args.liquidity).to.be.approximately(
+          value,
+          value / 1000n,
+        );
         expect(sells[0].args.newSupply).to.be.equal(0n);
       });
 
@@ -436,25 +349,27 @@ describe('Memez', function () {
           factory,
           'Test',
           'TST',
-          parseEther('1.5'),
+          parseEther('15'),
         );
 
         const balanceBefore = await client.getBalance({
           address: sender1.account.address,
         });
 
-        await memecoin.write.mint({
-          value: parseEther('0.01'),
+        await memecoin.write.mint([0n], {
+          value: parseEther('1'),
           account: sender1.account,
         });
-        await memecoin.write.mint({
-          value: parseEther('1'),
+        await memecoin.write.mint([0n], {
+          value: parseEther('5'),
           account: sender2.account,
         });
         const balance = await memecoin.read.balanceOf([
           sender1.account.address,
         ]);
-        await memecoin.write.retire([balance], { account: sender1.account });
+        await memecoin.write.retire([balance, 0n], {
+          account: sender1.account,
+        });
 
         const balanceAfter = await client.getBalance({
           address: sender1.account.address,
@@ -469,35 +384,41 @@ describe('Memez', function () {
           factory,
           'Test',
           'TST',
-          parseEther('0.03'),
+          parseEther('30'),
         );
 
         const [sender1, sender2] = await viem.getWalletClients();
-        await memecoin.write.mint({
-          value: parseEther('0.01'),
+        await memecoin.write.mint([0n], {
+          value: parseEther('10'),
           account: sender1.account,
         });
-        await memecoin.write.mint({
-          value: parseEther('0.01'),
+        await memecoin.write.mint([0n], {
+          value: parseEther('10'),
           account: sender2.account,
         });
-        await memecoin.write.mint({
-          value: parseEther('0.01'),
+        await memecoin.write.mint([0n], {
+          value: parseEther('10'),
           account: sender2.account,
         });
 
-        const client = await viem.getPublicClient();
-        const router = await getContract({
-          abi: fraxswapRouterAbi,
-          address: await memecoin.read.fraxswapRouter(),
-          client,
-        });
+        const listingManagerAddress = await memecoin.read.listingManager();
+        const listingManager = await hre.viem.getContractAt(
+          'MemeCoinListingManager',
+          listingManagerAddress,
+        );
+        const fraxswapRouterAddress =
+          await listingManager.read.fraxswapRouter();
+        const fraxswapFactoryAddress =
+          await listingManager.read.fraxswapFactory();
+        const router = await hre.viem.getContractAt(
+          'IFraxswapRouter',
+          fraxswapRouterAddress,
+        );
 
-        const fraxFactory = await getContract({
-          abi: fraxswapFactoryAbi,
-          address: (await router.read.factory()) as Address,
-          client,
-        });
+        const fraxFactory = await hre.viem.getContractAt(
+          'IFraxswapFactory',
+          fraxswapFactoryAddress,
+        );
 
         const weth = await router.read.WETH();
 
@@ -513,58 +434,6 @@ describe('Memez', function () {
         expect(token2).to.be.equal(weth);
       });
     });
-    describe('Metadata updating', function () {
-      it('Should update metadata if not listed yet', async function () {
-        const [sender1] = await viem.getWalletClients();
-        const factory = await loadFixture(deployMemezFactory);
-        const memecoin = await deployMemeCoin(
-          factory,
-          'Test',
-          'TST',
-          parseEther('0.003'),
-        );
-        const description = '*description*';
-        const image = '*image*';
-        await expect(
-          memecoin.write.updateMetadata([description, image], {
-            account: sender1.account,
-          }),
-        ).to.emit(memecoin, 'MetadataUpdated');
-
-        const onChainDescription = await memecoin.read.description();
-        const onChainImage = await memecoin.read.image();
-
-        expect(onChainDescription).to.be.equal(description);
-        expect(onChainImage).to.be.equal(image);
-      });
-      it('Should not update metadata if already listed', async function () {
-        const [sender1] = await viem.getWalletClients();
-        const factory = await loadFixture(deployMemezFactory);
-        const cap = parseEther('0.003');
-        const memecoin = await deployMemeCoin(factory, 'Test', 'TST', cap);
-        await memecoin.write.mint({ value: cap, account: sender1.account });
-        const description = '*description*';
-        const image = '*image*';
-        await expect(
-          memecoin.write.updateMetadata([description, image], {
-            account: sender1.account,
-          }),
-        ).to.be.revertedWith('Already listed');
-      });
-      it('Should not update metadata if not owner', async function () {
-        const [sender1, sender2] = await viem.getWalletClients();
-        const factory = await loadFixture(deployMemezFactory);
-        const cap = parseEther('0.003');
-        const memecoin = await deployMemeCoin(factory, 'Test', 'TST', cap);
-        const description = '*description*';
-        const image = '*image*';
-        await expect(
-          memecoin.write.updateMetadata([description, image], {
-            account: sender2.account,
-          }),
-        ).to.be.revertedWith('Ownable: caller is not the owner');
-      });
-    });
     describe('Unexpected usage checking', function () {
       it('Should check MemeCoin legitimacy', async function () {
         const legitFactory = await loadFixture(deployMemezFactory);
@@ -573,13 +442,13 @@ describe('Memez', function () {
           legitFactory,
           'Real Memecoin',
           'RMC',
-          parseEther('0.003'),
+          parseEther('30'),
         );
 
         const nonLegitMemecoin = await deployMockERC20(
           'Fake Memecoin',
           'FMC',
-          parseEther('0.003'),
+          parseEther('30'),
         );
 
         expect(await legitFactory.read.isMemeCoinLegit([legitMemecoin.address]))
@@ -594,16 +463,16 @@ describe('Memez', function () {
 
       it('Should sent leftover back on reaching cap', async function () {
         const publicClient = await viem.getPublicClient();
-        const [sender] = await viem.getWalletClients();
+        const [, sender] = await viem.getWalletClients();
         const factory = await loadFixture(deployMemezFactory);
-        const cap = parseEther('0.01');
+        const cap = parseEther('10');
         const memecoin = await deployMemeCoin(factory, 'Test', 'TST', cap);
 
         const balanceBefore = await publicClient.getBalance({
           address: sender.account.address,
         });
-        const hash = await memecoin.write.mint({
-          value: cap + parseEther('0.02'),
+        const hash = await memecoin.write.mint([0n], {
+          value: cap + parseEther('5'),
           account: sender.account,
         });
         const receipt = await publicClient.waitForTransactionReceipt({ hash });
@@ -630,16 +499,16 @@ describe('Memez', function () {
       it('Should not mint after listing', async function () {
         const [sender] = await viem.getWalletClients();
         const factory = await loadFixture(deployMemezFactory);
-        const cap = parseEther('0.01');
+        const cap = parseEther('10');
         const memecoin = await deployMemeCoin(factory, 'Test', 'TST', cap);
 
-        await memecoin.write.mint({
+        await memecoin.write.mint([0n], {
           value: cap,
           account: sender.account,
         });
 
-        const mintAfterListing = memecoin.write.mint({
-          value: parseEther('0.01'),
+        const mintAfterListing = memecoin.write.mint([0n], {
+          value: parseEther('10'),
           account: sender.account,
         });
 
@@ -649,10 +518,10 @@ describe('Memez', function () {
       it('Should not retire after listing', async function () {
         const [sender] = await viem.getWalletClients();
         const factory = await loadFixture(deployMemezFactory);
-        const cap = parseEther('0.01');
+        const cap = parseEther('10');
         const memecoin = await deployMemeCoin(factory, 'Test', 'TST', cap);
 
-        await memecoin.write.mint({
+        await memecoin.write.mint([0n], {
           value: cap,
           account: sender.account,
         });
@@ -665,7 +534,7 @@ describe('Memez', function () {
         );
 
         const retireAfterListing = memecoin.write.retire(
-          [mints[0].args.amount!],
+          [mints[0].args.amount!, 0n],
           {
             account: sender.account,
           },

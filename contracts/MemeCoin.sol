@@ -1,42 +1,25 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity >=0.8.0;
 
-import { IUniswapV2Factory } from "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
-import { IUniswapV2Router02 } from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import '@openzeppelin/contracts/interfaces/IERC5313.sol';
+import "./interfaces/IMemeCoinDeployer.sol";
+import "./interfaces/IMemeCoinListingManager.sol";
+import "./ERC20Plus.sol";
 import "./Formula.sol";
 import "hardhat/console.sol";
 
-interface IFraxswapFactory is IUniswapV2Factory {
-    function createPair(address tokenA, address tokenB, uint256 fee) external returns (address pair);
-    function globalPause() external view returns (bool);
-    function toggleGlobalPause() external;
-}
-
-interface IFraxswapRouter is IUniswapV2Router02 {
-    function quote(uint256 amountA, uint256 reserveA, uint256 reserveB) external pure returns (uint256 amountB);
-    function getAmountsOut(uint256 amountIn, address[] memory path) external view returns (uint256[] memory amounts);
-    function getAmountsIn(uint256 amountOut, address[] memory path) external view returns (uint256[] memory amounts);
-    function getAmountsOutWithTwamm(
-        uint256 amountIn,
-        address[] memory path
-    ) external returns (uint256[] memory amounts);
-    function getAmountsInWithTwamm(
-        uint256 amountOut,
-        address[] memory path
-    ) external returns (uint256[] memory amounts);
-}
-
-contract MemeCoin is ERC20, IERC5313 {
-    address constant public fraxswapFactory = 0xE30521fe7f3bEB6Ad556887b50739d6C7CA667E6;
-    address constant public fraxswapRouter = 0x39cd4db6460d8B5961F73E997E86DdbB7Ca4D5F6;
+contract MemeCoin is ERC20Plus {
+    uint256 constant internal DECIMALS = 1e18;
+    address public immutable listingManager;
+    uint96 public cap;
     address internal immutable formula;
+    uint16 internal immutable powerN;
+    uint16 internal immutable powerD;
+    uint16 internal immutable factorN;
+    uint16 internal immutable factorD;
+    uint32 public immutable coinIndex;
     address public immutable owner;
-    string public description;
-    string public image;
-    uint256 public cap;
+    string public override description;
+    string public override image;
 
     event Mint(
         address indexed by,
@@ -54,14 +37,25 @@ contract MemeCoin is ERC20, IERC5313 {
         uint256 timestamp // debug only
     );
 
-    event MetadataUpdated(string description, string image);
+    constructor() payable ERC20Plus(IMemeCoinDeployer(_msgSender()).erc20Parameters()) {
+        IMemeCoinDeployer deployer = IMemeCoinDeployer(_msgSender());
+        (
+            listingManager,
+            cap,
+            formula,
+            powerN,
+            powerD,
+            factorN,
+            factorD,
+            coinIndex,
+            owner,
+            description,
+            image
+        ) = deployer.parameters();
 
-    constructor(address formula_, string memory name, string memory symbol, uint256 cap_, address owner_) payable ERC20(name, symbol) {
-        require(cap_ > 0, 'Positive cap expected');
+        require(cap > 0, 'Positive cap expected');
 
-        formula = formula_;
-        cap = cap_;
-        owner = owner_;
+        if (msg.value > 0) _mintCoin(owner, 0);
     }
 
     modifier notListed() {
@@ -69,43 +63,25 @@ contract MemeCoin is ERC20, IERC5313 {
         _;
     }
 
-    modifier onlyOwner() {
-        require(msg.sender == owner, 'Ownable: caller is not the owner');
-        _;
-    }
-
-    function updateMetadata(string memory description_, string memory image_) external virtual notListed onlyOwner {
-        description = description_;
-        image = image_;
-        emit MetadataUpdated(description, image);
+    function getCoefficients() external view returns (
+        uint256 powerNumerator, uint256 powerDenominator, uint256 factorNumerator, uint256 factorDenominator
+    ) {
+        return (uint256(powerN), uint256(powerD), uint256(factorN), uint256(factorD));
     }
 
     function _listing() internal {
-        uint amountToken = cap / price();
-
-        console.log(IFraxswapRouter(fraxswapRouter).quote(1, amountToken, cap)); // debug only
-        console.log(price()); // debug only
-
-        _mint(address(this), amountToken);
-        _approve(address(this), fraxswapRouter, amountToken);
-
-        IFraxswapRouter(fraxswapRouter).addLiquidityETH{
-            value: cap
-        }(
-            address(this),
-            amountToken,
-            amountToken,
-            cap,
-            address(0x0000000000000000000000000000000000000000),
-            block.timestamp
-        );
+        IMemeCoinListingManager _listingManager = IMemeCoinListingManager(listingManager);
+        (uint256 amountTokenForListing, uint256 amountTokenForMemez) = _listingManager.estimateMemeCoinListingWithTwamm(cap, price());
+        unchecked { _mint(address(_listingManager), amountTokenForListing + amountTokenForMemez); }
+        _listingManager.listMemeCoin{value: cap}(amountTokenForListing, amountTokenForMemez);
 
         if (address(this).balance > 0) {
-            (bool success, ) = msg.sender.call{value: address(this).balance}('');
+            console.log(address(this).balance);
+            (bool success, ) = _msgSender().call{value: address(this).balance}('');
             require(success, 'Leftover transfer failed');
         }
 
-        cap = 0;
+        delete cap;
     }
 
     /// @notice Returns reserve balance
@@ -115,53 +91,72 @@ contract MemeCoin is ERC20, IERC5313 {
 
     /// @notice Returns price at current supply
     function price() public view returns (uint256) {
-        uint256 _totalSupply = totalSupply();
-        return _totalSupply * _totalSupply / 3000;
+        (uint256 result, uint8 precision) = Formula(formula).power(totalSupply(), DECIMALS, powerN, powerD);
+        return (result >> precision) * factorN / factorD;
     }
 
-    /// @notice Mints tokens pertaining to the deposited amount of reserve tokens
-    /// @dev Calls mint on token contract, purchaseTargetAmount on formula contract
-    function mint() public payable virtual notListed {
+    /// @notice Mints tokens to address pertaining to the deposited amount of reserve tokens
+    function _mintCoin(address minter, uint256 minAmount) internal virtual {
         uint256 value = msg.value;
-        if (reserveBalance() >= cap) {
-            uint256 leftover = reserveBalance() - cap;
-            value = value - leftover;
+        uint256 _cap = cap;
+        uint256 _reserveBalance = address(this).balance;
+        if (_reserveBalance >= _cap) {
+            unchecked{
+                uint256 leftover = _reserveBalance - _cap;
+                value = value - leftover;
+            }
         }
 
         uint256 amount = calculatePurchaseReturn(value);
-        _mint(_msgSender(), amount);
-        emit Mint(_msgSender(), amount, value, totalSupply(), block.timestamp);
+        require(amount >= minAmount, "Insufficient output token amount");
+        _mint(minter, amount);
+        emit Mint(minter, amount, value, totalSupply(), block.timestamp);
 
-        if (reserveBalance() >= cap) {
-            _listing();
-        }
+        if (address(this).balance >= _cap) _listing();
+    }
+
+    /// @notice Mints tokens pertaining to the deposited amount of reserve tokens
+    /// @param minAmount The minimum amount of tokens that user expects to receive
+    function mint(uint256 minAmount) external payable virtual notListed {
+        return _mintCoin(_msgSender(), minAmount);
     }
 
     /// @notice Retires tokens of given amount, and transfers pertaining reserve tokens to account
     /// @param amount The amount of tokens being retired
-    function retire(uint256 amount) external virtual notListed {
-        require(totalSupply() - amount >= 0, "Requested Retire Amount Exceeds Supply");
-        require(amount <= balanceOf(_msgSender()), "Requested Retire Amount Exceeds Owned");
+    /// @param minValue The minimum ETH value that user expects to receive
+    function retire(uint256 amount, uint256 minValue) external virtual notListed {
+        uint256 _totalSupply = totalSupply();
+        require(amount <= _totalSupply, "Retire Amount Exceeds Supply");
         uint256 liquidity = calculateSaleReturn(amount);
-        payable(_msgSender()).transfer(liquidity);
-        _burn(_msgSender(), amount);
-        emit Retire(_msgSender(), amount, liquidity, totalSupply(), block.timestamp);
+        require(liquidity >= minValue, "Insufficient output ETH amount");
+        address msgSender = _msgSender();
+        (bool success, ) = msgSender.call{value: liquidity}('');
+        require(success, 'ETH transfer failed');
+        _burn(msgSender, amount);
+        emit Retire(msgSender, amount, liquidity, totalSupply(), block.timestamp);
     }
 
     function calculatePurchaseReturn(
         uint256 _depositAmount
     ) public view returns (uint256) {
-        uint256 _totalSupply = totalSupply();
-        uint256 temp = 1000 * _depositAmount + _totalSupply * _totalSupply * _totalSupply;
-        (uint256 result, uint8 precision) = Formula(formula).power(temp, 1, 1, 3);
-        temp = (result - 1) >> precision;
-        return temp - _totalSupply;
+        unchecked {
+            uint32 powerNOfPowerPlus1 = powerN + powerD;
+            uint256 baseN = (cap + _depositAmount) * powerNOfPowerPlus1 * factorD;
+            uint256 baseD = factorN * powerD;
+            (uint256 result, uint8 precision) = Formula(formula).power(baseN, baseD, powerD, powerNOfPowerPlus1);
+            return (result >> precision) * DECIMALS - totalSupply();
+        }
     }
 
     function calculateSaleReturn(
         uint256 _saleAmount
     ) public view returns (uint256) {
-        uint256 _totalSupply = totalSupply();
-        return (3 * _totalSupply * _totalSupply * _saleAmount - 3 * _totalSupply * _saleAmount * _saleAmount + _saleAmount * _saleAmount * _saleAmount) / 1000;
+        unchecked {
+            uint32 powerNOfPowerPlus1 = powerN + powerD;
+            uint256 newSupply = totalSupply() - _saleAmount;
+            if (newSupply == 0) return address(this).balance;
+            (uint256 result, uint8 precision) = Formula(formula).power(newSupply, DECIMALS, powerNOfPowerPlus1, powerD);
+            return address(this).balance - (((result >> precision) * factorN * powerD) / factorD / powerNOfPowerPlus1);
+        }
     }
 }

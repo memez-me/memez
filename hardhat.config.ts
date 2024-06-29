@@ -6,7 +6,19 @@ import 'hardhat-chai-matchers-viem';
 dotenv.config();
 
 const config: HardhatUserConfig = {
-  solidity: '0.8.24',
+  solidity: {
+    compilers: [
+      {
+        version: '0.8.24',
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 1000000,
+          },
+        },
+      },
+    ],
+  },
   networks: {
     hardhat: {
       forking: {

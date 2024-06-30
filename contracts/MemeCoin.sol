@@ -76,7 +76,6 @@ contract MemeCoin is ERC20Plus {
         _listingManager.listMemeCoin{value: cap}(amountTokenForListing, amountTokenForMemez);
 
         if (address(this).balance > 0) {
-            console.log(address(this).balance);
             (bool success, ) = _msgSender().call{value: address(this).balance}('');
             require(success, 'Leftover transfer failed');
         }
@@ -107,7 +106,7 @@ contract MemeCoin is ERC20Plus {
             }
         }
 
-        uint256 amount = calculatePurchaseReturn(value);
+        uint256 amount = _calculatePurchaseReturn(value, msg.value);
         require(amount >= minAmount, "Insufficient output token amount");
         _mint(minter, amount);
         emit Mint(minter, amount, value, totalSupply(), block.timestamp);
@@ -136,16 +135,23 @@ contract MemeCoin is ERC20Plus {
         emit Retire(msgSender, amount, liquidity, totalSupply(), block.timestamp);
     }
 
-    function calculatePurchaseReturn(
-        uint256 _depositAmount
-    ) public view returns (uint256) {
+    function _calculatePurchaseReturn(
+        uint256 _depositValue,
+        uint256 _msgValue
+    ) internal view returns (uint256) {
         unchecked {
             uint32 powerNOfPowerPlus1 = powerN + powerD;
-            uint256 baseN = (cap + _depositAmount) * powerNOfPowerPlus1 * factorD;
+            uint256 baseN = (address(this).balance - _msgValue + _depositValue) * powerNOfPowerPlus1 * factorD;
             uint256 baseD = factorN * powerD;
             (uint256 result, uint8 precision) = Formula(formula).power(baseN, baseD, powerD, powerNOfPowerPlus1);
             return (result >> precision) * DECIMALS - totalSupply();
         }
+    }
+
+    function calculatePurchaseReturn(
+        uint256 _depositValue
+    ) external view returns (uint256) {
+        return _calculatePurchaseReturn(_depositValue, 0);
     }
 
     function calculateSaleReturn(

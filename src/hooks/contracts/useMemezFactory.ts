@@ -2,7 +2,7 @@ import { Address } from 'viem';
 import { MemezFactory$Type } from '../../../artifacts/contracts/MemezFactory.sol/MemezFactory';
 import MemezFactoryJSON from '../../../artifacts/contracts/MemezFactory.sol/MemezFactory.json';
 
-const factoryAddress = '0x4Bbe3E1dBFe8bFC9e62F996D1167847e5428732b' as Address;
+const factoryAddress = '0x4Cb7b915F150dC0AF306B9a01cA0401FF91be087' as Address;
 
 export const useMemezFactoryConfig = () => {
   return {

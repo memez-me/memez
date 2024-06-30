@@ -25,6 +25,11 @@ function LightweightChart({
 }: LightweightChartProps) {
   const chartContainerRef = useRef<HTMLDivElement | null>(null);
 
+  const precision = useMemo(
+    () => (overriddenCandlestickOptions?.priceFormat as any)?.precision ?? 3,
+    [overriddenCandlestickOptions],
+  );
+
   const chartOptions = useMemo<DeepPartial<ChartOptions>>(
     () =>
       _.defaultsDeep({}, overriddenChartOptions, {
@@ -34,9 +39,9 @@ function LightweightChart({
         },
         localization: {
           priceFormatter: function (value: number) {
-            const fixed = value.toFixed(3);
+            const fixed = value.toFixed(precision);
             if (Number(fixed) > 0) return Number.parseFloat(fixed).toString();
-            const exp = value.toExponential(3);
+            const exp = value.toExponential(precision);
             return Number.parseFloat(exp).toString();
           },
         },
@@ -66,7 +71,7 @@ function LightweightChart({
           },
         },
       } as DeepPartial<ChartOptions>),
-    [overriddenChartOptions],
+    [overriddenChartOptions, precision],
   );
 
   const candlestickOptions = useMemo<CandlestickSeriesPartialOptions>(

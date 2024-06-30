@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import PageHead from '../components/PageHead';
-import Link from 'next/link';
 import TextInput from '../components/TextInput';
 import { PrimaryButton, SecondaryButton } from '../components/buttons';
 import { useChartOptions, useMemezFactoryConfig } from '../hooks';
@@ -11,7 +10,7 @@ import {
 } from 'wagmi';
 import { formatEther, parseEther, parseEventLogs } from 'viem';
 import { useRouter } from 'next/router';
-import { getPrice, getSupply } from '../utils';
+import { getPrice, getSupply, isValidHttpUrl } from '../utils';
 import ApexChart from '../components/ApexChart';
 
 const chartIntervalsCount = 50;
@@ -28,7 +27,12 @@ export function Create() {
   const [name, setName] = useState('');
   const [symbol, setSymbol] = useState('');
   const [description, setDescription] = useState('');
+  const [image, setImage] = useState('');
+  const [websiteUrl, setWebsiteUrl] = useState('');
+  const [telegramUrl, setTelegramUrl] = useState('');
+  const [twitterUrl, setTwitterUrl] = useState('');
   const [cap, setCap] = useState<string | number>('10');
+  const [initialBuyout, setInitialBuyout] = useState<string | number>('');
   const [curveFactorN, setCurveFactorN] = useState<string | number>('1000');
   const [curveFactorD, setCurveFactorD] = useState<string | number>('');
   const [curvePowerN, setCurvePowerN] = useState<string | number>('3');
@@ -58,6 +62,40 @@ export function Create() {
     () => (description.length > 200 ? 'Description is too long!' : null),
     [description],
   );
+  const websiteUrlError = useMemo(
+    () =>
+      !websiteUrl
+        ? null
+        : websiteUrl.length > 50
+          ? 'Website URL is too long!'
+          : !isValidHttpUrl(websiteUrl)
+            ? 'Website URL is invalid!'
+            : null,
+    [websiteUrl],
+  );
+  const telegramUrlError = useMemo(
+    () =>
+      !telegramUrl
+        ? null
+        : telegramUrl.length > 50
+          ? 'Telegram URL is too long!'
+          : !isValidHttpUrl(telegramUrl, ['t.me'], true)
+            ? 'Telegram URL is invalid!'
+            : null,
+    [telegramUrl],
+  );
+  const twitterUrlError = useMemo(
+    () =>
+      !twitterUrl
+        ? null
+        : twitterUrl.length > 50
+          ? 'Twitter (X) URL is too long!'
+          : !isValidHttpUrl(twitterUrl, ['twitter.com', 'x.com'])
+            ? 'Twitter (X) URL is invalid!'
+            : null,
+    [twitterUrl],
+  );
+
   const capError = useMemo(
     () => (!cap || Number(cap) < 1 ? 'Invalid cap!' : null),
     [cap],
@@ -90,10 +128,32 @@ export function Create() {
         : null,
     [curvePowerD],
   );
+  const initialBuyoutError = useMemo(
+    () =>
+      !initialBuyout
+        ? null
+        : Number(initialBuyout) > Number(cap)
+          ? 'Initial buyout must not exceed the cap!'
+          : null,
+    [cap, initialBuyout],
+  );
 
   const tokenInfoError = useMemo(
-    () => nameError || symbolError || descriptionError,
-    [nameError, symbolError, descriptionError],
+    () =>
+      nameError ||
+      symbolError ||
+      descriptionError ||
+      websiteUrlError ||
+      telegramUrlError ||
+      twitterUrlError,
+    [
+      nameError,
+      symbolError,
+      descriptionError,
+      websiteUrlError,
+      telegramUrlError,
+      twitterUrlError,
+    ],
   );
 
   const tokenomicsError = useMemo(
@@ -102,13 +162,15 @@ export function Create() {
       curveFactorNError ||
       curveFactorDError ||
       curvePowerNError ||
-      curvePowerDError,
+      curvePowerDError ||
+      initialBuyoutError,
     [
       capError,
       curveFactorNError,
       curveFactorDError,
       curvePowerNError,
       curvePowerDError,
+      initialBuyoutError,
     ],
   );
 
@@ -122,15 +184,36 @@ export function Create() {
       !tokenomicsError
         ? getSupply(
             parseEther((cap || 0).toString()),
-            parseEther((curvePowerN || 0).toString()),
-            parseEther((curvePowerD || 1).toString()),
-            parseEther((curveFactorN || 0).toString()),
-            parseEther((curveFactorD || 1).toString()),
+            BigInt(curvePowerN || 0),
+            BigInt(curvePowerD || 1),
+            BigInt(curveFactorN || 0),
+            BigInt(curveFactorD || 1),
           )
         : 0n,
     [
       tokenomicsError,
       cap,
+      curveFactorD,
+      curveFactorN,
+      curvePowerD,
+      curvePowerN,
+    ],
+  );
+
+  const buyoutSupply = useMemo(
+    () =>
+      !tokenomicsError && Number(initialBuyout) > 0
+        ? getSupply(
+            parseEther((initialBuyout || 0).toString()),
+            BigInt(curvePowerN || 0),
+            BigInt(curvePowerD || 1),
+            BigInt(curveFactorN || 0),
+            BigInt(curveFactorD || 1),
+          )
+        : 0n,
+    [
+      tokenomicsError,
+      initialBuyout,
       curveFactorD,
       curveFactorN,
       curvePowerD,
@@ -152,10 +235,10 @@ export function Create() {
               formatEther(
                 getPrice(
                   supply,
-                  parseEther((curvePowerN || 0).toString()),
-                  parseEther((curvePowerD || 1).toString()),
-                  parseEther((curveFactorN || 0).toString()),
-                  parseEther((curveFactorD || 1).toString()),
+                  BigInt(curvePowerN || 0),
+                  BigInt(curvePowerD || 1),
+                  BigInt(curveFactorN || 0),
+                  BigInt(curveFactorD || 1),
                 ),
               ),
             ),
@@ -170,16 +253,66 @@ export function Create() {
     tokenomicsError,
   ]);
 
+  const buyoutPoint = useMemo(
+    () =>
+      !tokenomicsError && buyoutSupply > 0n
+        ? {
+            x: Number(formatEther(buyoutSupply)),
+            y: Number(
+              formatEther(
+                getPrice(
+                  buyoutSupply,
+                  BigInt(curvePowerN),
+                  BigInt(curvePowerD || 1),
+                  BigInt(curveFactorN),
+                  BigInt(curveFactorD || 1),
+                ),
+              ),
+            ),
+            text:
+              Number(((Number(initialBuyout) / Number(cap)) * 100).toFixed(2)) +
+              '%',
+          }
+        : undefined,
+    [
+      tokenomicsError,
+      buyoutSupply,
+      initialBuyout,
+      cap,
+      curvePowerN,
+      curvePowerD,
+      curveFactorN,
+      curveFactorD,
+    ],
+  );
+
   const chartOptions = useChartOptions({
     chartTitle: 'Bonding curve',
     titleX: 'Supply',
     titleY: 'Price',
+    point: buyoutPoint,
   });
+
+  const links = useMemo(
+    () => [websiteUrl, telegramUrl, twitterUrl].filter((link) => link),
+    [websiteUrl, telegramUrl, twitterUrl],
+  );
 
   const { data, error } = useSimulateContract({
     ...memezFactoryConfig,
     functionName: 'deploy',
-    args: [name, symbol, parseEther((cap ?? 0).toString())],
+    args: [
+      parseEther((cap || 0).toString()),
+      Number(curvePowerN || 0),
+      Number(curvePowerD || 1),
+      Number(curveFactorN || 0),
+      Number(curveFactorD || 1),
+      name,
+      symbol,
+      description + (links.length > 0 ? `\nLinks:\n${links.join('\n')}` : ''),
+      image,
+    ],
+    value: parseEther((initialBuyout || 0).toString()),
     query: {
       enabled: !isValidationError,
     },
@@ -222,7 +355,7 @@ export function Create() {
 
   useEffect(() => {
     if (!deployedMemeCoinAddress) return;
-    router.push(`/coin?address=${deployedMemeCoinAddress}`);
+    router.push(`/?coin=${deployedMemeCoinAddress}`);
   }, [deployedMemeCoinAddress, router]);
 
   return (
@@ -233,29 +366,21 @@ export function Create() {
         description="Create your memecoin!"
       />
       <div className="flex flex-col gap-x3 items-center h-full">
-        <Link
-          href="/"
-          passHref
-          rel="noreferrer"
-          className="disabled:shadow hover:font-bold hover:text-main-light focus:text-main-light active:text-main-shadow"
-        >
-          [go back]
-        </Link>
-        <div className="flex flex-row portrait:flex-col gap-x2 flex-1 w-full items-center justify-center landscape:overflow-hidden py-x4">
-          <div className="flex flex-col gap-x2 landscape:flex-1 portrait:w-full max-w-[600px] landscape:max-h-full landscape:overflow-auto">
+        <div className="flex flex-row portrait:flex-col gap-x2 flex-1 w-full items-center justify-center landscape:overflow-hidden">
+          <div className="flex flex-col gap-x2 landscape:flex-1 landscape:px-x2 portrait:w-full max-w-[600px] landscape:max-h-full landscape:overflow-auto">
             <div
               className={`flex flex-col gap-x2 landscape:flex-1 portrait:w-full w-full p-x2 rounded-x1
-                bg-main-gray border-2 cursor-pointer hover:border-main-accent
-                ${step === CreationStep.TokenInfo ? 'border-main-accent' : step === CreationStep.Finish && !!tokenInfoError ? 'border-second-error' : 'border-main-gray'}
+                backdrop-blur bg-gradient-to-b from-main-accent/16 border-2 cursor-pointer hover:border-main-accent
+                ${step === CreationStep.TokenInfo ? 'border-main-accent' : step === CreationStep.Finish && !!tokenInfoError ? 'border-second-error' : 'border-main-shadow'}
                 text-body font-medium tracking-body
               `}
               onClick={() => setStep(CreationStep.TokenInfo)}
             >
-              <h2 className="font-medium text-headline-2 leading-normal text-center">
+              <h2 className="font-bold text-headline-2 leading-normal text-center text-shadow">
                 Token info
               </h2>
               <div className="flex flex-row gap-x1 lg:gap-x2 justify-between items-center">
-                <span className="font-bold text-title leading-normal">
+                <span className="font-bold text-title text-shadow leading-normal">
                   Name
                 </span>
                 {step === CreationStep.TokenInfo || !name ? (
@@ -265,7 +390,7 @@ export function Create() {
                 )}
               </div>
               <div className="flex flex-row gap-x1 lg:gap-x2 justify-between items-center">
-                <span className="font-bold text-title leading-normal">
+                <span className="font-bold text-title text-shadow leading-normal">
                   Symbol
                 </span>
                 {step === CreationStep.TokenInfo || !symbol ? (
@@ -275,7 +400,7 @@ export function Create() {
                 )}
               </div>
               <div className="flex flex-row gap-x1 lg:gap-x2 justify-between items-center">
-                <span className="font-bold text-title leading-normal">
+                <span className="font-bold text-title text-shadow leading-normal">
                   Description
                 </span>
                 {step === CreationStep.TokenInfo || !description ? (
@@ -286,28 +411,86 @@ export function Create() {
                   <span className="font-bold">{description}</span>
                 )}
               </div>
+              <div className="flex flex-row gap-x1 lg:gap-x2 justify-between items-center">
+                <span className="font-bold text-title text-shadow leading-normal">
+                  Website
+                </span>
+                {step === CreationStep.TokenInfo ? (
+                  <span className="font-medium">
+                    The website URL for your token
+                  </span>
+                ) : (
+                  <span className="font-bold">
+                    {websiteUrl || <i>No website provided</i>}
+                  </span>
+                )}
+              </div>
+              <div className="flex flex-row gap-x1 lg:gap-x2 justify-between items-center">
+                <span className="font-bold text-title text-shadow leading-normal">
+                  Telegram
+                </span>
+                {step === CreationStep.TokenInfo ? (
+                  <span className="font-medium">
+                    The Telegram URL for your token
+                  </span>
+                ) : (
+                  <span className="font-bold">
+                    {telegramUrl || <i>No Telegram provided</i>}
+                  </span>
+                )}
+              </div>
+              <div className="flex flex-row gap-x1 lg:gap-x2 justify-between items-center">
+                <span className="font-bold text-title text-shadow leading-normal">
+                  Twitter (X)
+                </span>
+                {step === CreationStep.TokenInfo ? (
+                  <span className="font-medium">
+                    The Twitter (X) URL for your token
+                  </span>
+                ) : (
+                  <span className="font-bold">
+                    {twitterUrl || <i>No Twitter (X) provided</i>}
+                  </span>
+                )}
+              </div>
             </div>
             <div
               className={`flex flex-col gap-x2 landscape:flex-1 portrait:w-full w-full p-x2 rounded-x1
-                bg-main-gray border-2 cursor-pointer hover:border-main-accent
-                ${step === CreationStep.Tokenomics ? 'border-main-accent' : step === CreationStep.Finish && !!tokenomicsError ? 'border-second-error' : 'border-main-gray'}
+                backdrop-blur bg-gradient-to-b from-main-accent/16 border-2 cursor-pointer hover:border-main-accent
+                ${step === CreationStep.Tokenomics ? 'border-main-accent' : step === CreationStep.Finish && !!tokenomicsError ? 'border-second-error' : 'border-main-shadow'}
                 text-body font-medium tracking-body
               `}
               onClick={() => setStep(CreationStep.Tokenomics)}
             >
-              <h2 className="font-medium text-headline-2 leading-normal text-center">
+              <h2 className="font-bold text-headline-2 leading-normal text-center text-shadow">
                 Tokenomics
               </h2>
               <div className="flex flex-row gap-x1 lg:gap-x2 justify-between items-center">
-                <span className="font-bold text-title leading-normal">Cap</span>
+                <span className="font-bold text-title text-shadow leading-normal">
+                  Cap
+                </span>
                 {step === CreationStep.Tokenomics || !cap ? (
-                  <span className="font-medium">The cap of your token</span>
+                  <span className="font-medium">
+                    The cap of your token, ETH
+                  </span>
                 ) : (
                   <span className="font-bold">{cap} ETH</span>
                 )}
               </div>
               <div className="flex flex-row gap-x1 lg:gap-x2 justify-between items-center">
-                <span className="font-bold text-title leading-normal">
+                <span className="font-bold text-title text-shadow leading-normal">
+                  Buyout
+                </span>
+                {step === CreationStep.Tokenomics ? (
+                  <span className="font-medium">
+                    The initial buyout of your token, ETH
+                  </span>
+                ) : (
+                  <span className="font-bold">{initialBuyout || 0} ETH</span>
+                )}
+              </div>
+              <div className="flex flex-row gap-x1 lg:gap-x2 justify-between items-center">
+                <span className="font-bold text-title text-shadow leading-normal">
                   Factor
                 </span>
                 {step === CreationStep.Tokenomics || !curveFactorN ? (
@@ -326,7 +509,7 @@ export function Create() {
                 )}
               </div>
               <div className="flex flex-row gap-x1 lg:gap-x2 justify-between items-center">
-                <span className="font-bold text-title leading-normal">
+                <span className="font-bold text-title text-shadow leading-normal">
                   Power
                 </span>
                 {step === CreationStep.Tokenomics || !curvePowerN ? (
@@ -345,7 +528,7 @@ export function Create() {
                 )}
               </div>
               <div className="flex flex-row gap-x1 lg:gap-x2 justify-between items-center">
-                <span className="font-bold text-title leading-normal">
+                <span className="font-bold text-title text-shadow leading-normal">
                   Price formula
                 </span>
                 {step === CreationStep.Tokenomics || !!tokenomicsError ? (
@@ -389,7 +572,7 @@ export function Create() {
                 )}
               </div>
               <div className="flex flex-row gap-x1 lg:gap-x2 justify-between items-center">
-                <span className="font-bold text-title leading-normal">
+                <span className="font-bold text-title text-shadow leading-normal">
                   Max supply
                 </span>
                 {!!tokenomicsError ? (
@@ -399,6 +582,20 @@ export function Create() {
                 ) : (
                   <span className="font-bold">
                     {formatEther(maxSupply)} {symbol || ''}
+                  </span>
+                )}
+              </div>
+              <div className="flex flex-row gap-x1 lg:gap-x2 justify-between items-center">
+                <span className="font-bold text-title text-shadow leading-normal">
+                  Buyout tokens
+                </span>
+                {!!tokenomicsError ? (
+                  <span className="font-medium">
+                    The buyout amount of tokens
+                  </span>
+                ) : (
+                  <span className="font-bold">
+                    {formatEther(buyoutSupply || 0n)} {symbol || ''}
                   </span>
                 )}
               </div>
@@ -442,19 +639,21 @@ export function Create() {
             >
               {isPending || isConfirming
                 ? 'Creating memecoin...'
-                : 'Create memecoin'}
+                : Number(initialBuyout || 0) > 0
+                  ? `Create memecoin [${initialBuyout.toString()} ETH buyout]`
+                  : 'Create memecoin'}
             </PrimaryButton>
           </div>
           {step !== CreationStep.Finish && (
-            <div className="flex flex-col gap-x2 landscape:flex-1 portrait:w-full max-w-[600px] landscape:max-h-full landscape:overflow-auto">
+            <div className="flex flex-col gap-x2 landscape:flex-1 landscape:px-x2 portrait:w-full max-w-[600px] landscape:max-h-full landscape:overflow-auto">
               {step === CreationStep.TokenInfo && (
-                <div className="flex flex-col gap-x2 w-full p-x2 rounded-x1 bg-main-gray">
-                  <h2 className="font-medium text-headline-2 leading-normal text-center">
+                <div className="flex flex-col gap-x2 w-full p-x2 rounded-x1 border border-main-shadow backdrop-blur bg-gradient-to-b from-main-accent/16">
+                  <h2 className="font-bold text-headline-2 leading-normal text-center text-shadow">
                     Token info
                   </h2>
                   <div className="flex flex-col gap-x0.5 w-full">
                     <label
-                      className="font-bold text-title leading-normal pl-x0.5"
+                      className="font-bold text-headline-2 text-shadow leading-normal pl-x0.5"
                       htmlFor="name-input"
                     >
                       Name
@@ -463,13 +662,14 @@ export function Create() {
                       id="name-input"
                       value={name}
                       placeholder="Name"
+                      isSmall
                       isError={!!nameError}
                       onChange={(e) => setName(e.target.value)}
                     />
                   </div>
                   <div className="flex flex-col gap-x0.5 w-full">
                     <label
-                      className="font-bold text-title leading-normal pl-x0.5"
+                      className="font-bold text-headline-2 text-shadow leading-normal pl-x0.5"
                       htmlFor="symbol-input"
                     >
                       Symbol
@@ -478,13 +678,14 @@ export function Create() {
                       id="symbol-input"
                       value={symbol}
                       placeholder="Symbol"
+                      isSmall
                       isError={!!symbolError}
                       onChange={(e) => setSymbol(e.target.value)}
                     />
                   </div>
                   <div className="flex flex-col gap-x0.5 w-full">
                     <label
-                      className="font-bold text-title leading-normal pl-x0.5"
+                      className="font-bold text-headline-2 text-shadow leading-normal pl-x0.5"
                       htmlFor="description-input"
                     >
                       Description
@@ -493,8 +694,57 @@ export function Create() {
                       id="description-input"
                       value={description}
                       placeholder="Description"
+                      isSmall
                       isError={!!descriptionError}
                       onChange={(e) => setDescription(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-x0.5 w-full">
+                    <label
+                      className="font-bold text-headline-2 text-shadow leading-normal pl-x0.5"
+                      htmlFor="website-input"
+                    >
+                      Website
+                    </label>
+                    <TextInput
+                      id="website-input"
+                      value={websiteUrl}
+                      placeholder="https://..."
+                      isSmall
+                      isError={!!websiteUrlError}
+                      onChange={(e) => setWebsiteUrl(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-x0.5 w-full">
+                    <label
+                      className="font-bold text-headline-2 text-shadow leading-normal pl-x0.5"
+                      htmlFor="telegram-input"
+                    >
+                      Telegram
+                    </label>
+                    <TextInput
+                      id="telegram-input"
+                      value={telegramUrl}
+                      placeholder="https://t.me/..."
+                      isSmall
+                      isError={!!telegramUrlError}
+                      onChange={(e) => setTelegramUrl(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-x0.5 w-full">
+                    <label
+                      className="font-bold text-headline-2 text-shadow leading-normal pl-x0.5"
+                      htmlFor="twitter-input"
+                    >
+                      Twitter (X)
+                    </label>
+                    <TextInput
+                      id="twitter-input"
+                      value={twitterUrl}
+                      placeholder="https://twitter.com/..."
+                      isSmall
+                      isError={!!twitterUrlError}
+                      onChange={(e) => setTwitterUrl(e.target.value)}
                     />
                   </div>
                   {!!tokenInfoError && (
@@ -503,44 +753,63 @@ export function Create() {
                 </div>
               )}
               {step === CreationStep.Tokenomics && (
-                <div className="flex flex-col gap-x2 w-full p-x2 rounded-x1 bg-main-gray">
-                  <h2 className="font-medium text-headline-2 leading-normal text-center">
+                <div className="flex flex-col gap-x2 w-full p-x2 rounded-x1 border border-main-shadow backdrop-blur bg-gradient-to-b from-main-accent/16">
+                  <h2 className="font-bold text-headline-2 leading-normal text-center text-shadow">
                     Tokenomics
                   </h2>
                   <div className="flex flex-col gap-x0.5 w-full">
                     <label
-                      className="font-bold text-title leading-normal pl-x0.5"
+                      className="font-bold text-headline-2 text-shadow leading-normal pl-x0.5"
                       htmlFor="cap-input"
                     >
                       Cap
                     </label>
-                    <div className="flex flex-row gap-x1">
-                      <TextInput
-                        id="cap-input"
-                        className="flex-1"
-                        value={cap}
-                        placeholder="Cap"
-                        type="number"
-                        step={1}
-                        max={1000}
-                        isError={!!capError}
-                        onChange={(e) =>
-                          setCap(
-                            e.target.value
-                              .toString()
-                              .replaceAll(/[^0-9.,]/g, ''),
-                          )
-                        }
-                      />
-                      <span className="text-title font-extrabold self-center">
-                        ETH
-                      </span>
-                    </div>
+                    <TextInput
+                      id="cap-input"
+                      className="flex-1"
+                      value={cap}
+                      placeholder="0.0 ETH"
+                      type="number"
+                      step={1}
+                      max={1000}
+                      isSmall
+                      isError={!!capError}
+                      onChange={(e) =>
+                        setCap(
+                          e.target.value.toString().replaceAll(/[^0-9.,]/g, ''),
+                        )
+                      }
+                    />
+                  </div>
+                  <div className="flex flex-col gap-x0.5 w-full">
+                    <label
+                      className="font-bold text-headline-2 text-shadow leading-normal pl-x0.5"
+                      htmlFor="initial-buyout-input"
+                    >
+                      Buyout
+                    </label>
+                    <TextInput
+                      id="initial-buyout-input"
+                      className="flex-1"
+                      value={initialBuyout}
+                      placeholder="0.0 ETH"
+                      type="number"
+                      min={0}
+                      step={0.01}
+                      max={Number(cap || 0)}
+                      isSmall
+                      isError={!!initialBuyoutError}
+                      onChange={(e) =>
+                        setInitialBuyout(
+                          e.target.value.toString().replaceAll(/[^0-9.,]/g, ''),
+                        )
+                      }
+                    />
                   </div>
                   <div className="flex flex-row gap-x1 justify-stretch items-center">
                     <div className="flex flex-col gap-x0.5 w-full">
                       <label
-                        className="font-bold text-title leading-normal pl-x0.5"
+                        className="font-bold text-title text-shadow leading-normal pl-x0.5"
                         htmlFor="factor-n-input"
                       >
                         Factor Numerator
@@ -554,6 +823,7 @@ export function Create() {
                         step={1}
                         min={0}
                         max={1000000000}
+                        isSmall
                         isError={!!curveFactorNError}
                         onChange={(e) =>
                           setCurveFactorN(
@@ -564,12 +834,12 @@ export function Create() {
                         }
                       />
                     </div>
-                    <div className="font-bold text-title leading-normal self-end py-[20px]">
+                    <div className="font-bold text-title leading-normal self-end py-[10px]">
                       /
                     </div>
                     <div className="flex flex-col gap-x0.5 w-full">
                       <label
-                        className="font-bold text-title leading-normal pl-x0.5"
+                        className="font-bold text-title text-shadow leading-normal pl-x0.5"
                         htmlFor="factor-d-input"
                       >
                         Factor Denominator
@@ -583,6 +853,7 @@ export function Create() {
                         step={1}
                         min={1}
                         max={1000000000}
+                        isSmall
                         isError={!!curveFactorDError}
                         onChange={(e) =>
                           setCurveFactorD(
@@ -597,7 +868,7 @@ export function Create() {
                   <div className="flex flex-row gap-x1 justify-stretch items-center">
                     <div className="flex flex-col gap-x0.5 w-full">
                       <label
-                        className="font-bold text-title leading-normal pl-x0.5"
+                        className="font-bold text-title text-shadow leading-normal pl-x0.5"
                         htmlFor="power-n-input"
                       >
                         Power Numerator
@@ -611,6 +882,7 @@ export function Create() {
                         step={1}
                         min={0}
                         max={10}
+                        isSmall
                         isError={!!curvePowerNError}
                         onChange={(e) =>
                           setCurvePowerN(
@@ -621,12 +893,12 @@ export function Create() {
                         }
                       />
                     </div>
-                    <div className="font-bold text-title leading-normal self-end py-[20px]">
+                    <div className="font-bold text-title leading-normal self-end py-[10px]">
                       /
                     </div>
                     <div className="flex flex-col gap-x0.5 w-full">
                       <label
-                        className="font-bold text-title leading-normal pl-x0.5"
+                        className="font-bold text-title text-shadow leading-normal pl-x0.5"
                         htmlFor="power-d-input"
                       >
                         Power Denominator
@@ -640,6 +912,7 @@ export function Create() {
                         step={1}
                         min={1}
                         max={10}
+                        isSmall
                         isError={!!curvePowerDError}
                         onChange={(e) =>
                           setCurvePowerD(

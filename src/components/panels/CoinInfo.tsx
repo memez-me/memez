@@ -23,11 +23,17 @@ import {
   useWatchContractEvent,
   useWriteContract,
 } from 'wagmi';
-import { PrimaryButton } from '../buttons';
+import { LinkButton, PrimaryButton } from '../buttons';
 import TextInput from '../TextInput';
 import BuySellSwitch from '../BuySellSwitch';
 import ApexChart from '../ApexChart';
-import { trimAddress, Power, getPrice, utcTimestampToLocal } from '../../utils';
+import {
+  trimAddress,
+  getPrice,
+  utcTimestampToLocal,
+  getSupply,
+  isValidHttpUrl,
+} from '../../utils';
 import { getLogs } from 'viem/actions';
 import _ from 'lodash';
 import LightweightChart from '../LightweightChart';
@@ -185,48 +191,6 @@ export function CoinInfo({ memeCoinAddress, className }: CoinInfoProps) {
     lastMintRetireBlock,
   ]);
 
-  const candlestickData = useMemo(() => {
-    if (!mintRetireLogs?.length) return;
-    const prices = mintRetireLogs.map((event) => ({
-      open: Number(
-        formatEther(
-          getPrice(
-            event.args.newSupply -
-              event.args.amount * (event.eventName === 'Mint' ? 1n : -1n),
-          ),
-        ),
-      ),
-      close: Number(formatEther(getPrice(event.args.newSupply))),
-      seconds: utcTimestampToLocal(
-        Number(event.args.timestamp) as UTCTimestamp,
-      ),
-    }));
-
-    const oneMinGroups = _.groupBy(
-      prices,
-      ({ seconds }) => (seconds - (seconds % 60)) / 60,
-    );
-
-    return _.entries(oneMinGroups).map(([minutes, prices]) => ({
-      open: _.first(prices)!.open,
-      high: _.max(_.map(prices, (price) => Math.max(price.open, price.close)))!,
-      low: _.min(_.map(prices, (price) => Math.min(price.open, price.close)))!,
-      close: _.last(prices)!.close,
-      time: (Number(minutes) * 60) as UTCTimestamp,
-    }));
-  }, [mintRetireLogs]);
-
-  const candlestickPriceFormat = useMemo(() => {
-    if (!candlestickData) return;
-    const highest = _.maxBy(candlestickData, 'high')!.high;
-    const log10 = Math.floor(Math.log10(highest));
-    if (log10 > -3) return;
-    return {
-      precision: -log10,
-      minMove: 10 ** log10,
-    };
-  }, [candlestickData]);
-
   const {
     data,
     isError,
@@ -275,20 +239,111 @@ export function CoinInfo({ memeCoinAddress, className }: CoinInfoProps) {
         ...memeCoinConfig,
         functionName: 'reserveBalance',
       },
-    ],
+      {
+        ...memeCoinConfig,
+        functionName: 'getCoefficients',
+      },
+    ] as const,
     query: {
       refetchInterval: 5000,
     },
   });
 
+  const { powerN, powerD, factorN, factorD } = useMemo(
+    () => ({
+      powerN: data?.[10]?.result?.[0] ?? 1n,
+      powerD: data?.[10]?.result?.[1] ?? 1n,
+      factorN: data?.[10]?.result?.[2] ?? 1n,
+      factorD: data?.[10]?.result?.[3] ?? 1n,
+    }),
+    [data],
+  );
+
+  const { description, links } = useMemo(() => {
+    if (!data?.[7]?.result)
+      return {
+        description: '',
+        links: [],
+      };
+    const linksRegexp = /Links:\n((?:[^\n]+\n?)*)/;
+    const match = data[7].result.match(linksRegexp);
+    return {
+      description: data[7].result.substring(0, match?.index)?.trim(),
+      links: Object.fromEntries(
+        match?.[1]
+          ?.trim()
+          ?.split('\n')
+          ?.filter((link) => isValidHttpUrl(link))
+          ?.map((link) => {
+            const url = new URL(link);
+            let name = 'Website';
+            if (url.hostname === 't.me' || url.hostname.endsWith('.t.me')) {
+              name = 'Telegram';
+            } else if (['twitter.com', 'x.com'].includes(url.hostname)) {
+              name = 'Twitter';
+            }
+            return [name, link];
+          }) ?? [],
+      ),
+    };
+  }, [data]);
+
+  const candlestickData = useMemo(() => {
+    if (!mintRetireLogs?.length) return;
+    const prices = mintRetireLogs.map((event) => ({
+      open: Number(
+        formatEther(
+          getPrice(
+            event.args.newSupply -
+              event.args.amount * (event.eventName === 'Mint' ? 1n : -1n),
+            powerN,
+            powerD,
+            factorN,
+            factorD,
+          ),
+        ),
+      ),
+      close: Number(
+        formatEther(
+          getPrice(event.args.newSupply, powerN, powerD, factorN, factorD),
+        ),
+      ),
+      seconds: utcTimestampToLocal(
+        Number(event.args.timestamp) as UTCTimestamp,
+      ),
+    }));
+
+    const oneMinGroups = _.groupBy(
+      prices,
+      ({ seconds }) => (seconds - (seconds % 60)) / 60,
+    );
+
+    return _.entries(oneMinGroups).map(([minutes, prices]) => ({
+      open: _.first(prices)!.open,
+      high: _.max(_.map(prices, (price) => Math.max(price.open, price.close)))!,
+      low: _.min(_.map(prices, (price) => Math.min(price.open, price.close)))!,
+      close: _.last(prices)!.close,
+      time: (Number(minutes) * 60) as UTCTimestamp,
+    }));
+  }, [mintRetireLogs, powerN, powerD, factorN, factorD]);
+
+  const candlestickPriceFormat = useMemo(() => {
+    if (!candlestickData) return;
+    const highest = _.maxBy(candlestickData, 'high')!.high;
+    const log10 = Math.floor(Math.log10(highest)) - 1;
+    if (log10 > -3) return;
+    return {
+      precision: -log10,
+      minMove: Number(`1e${log10}`),
+    };
+  }, [candlestickData]);
+
   const maxSupply = useMemo(() => {
     if (!data) return undefined; // calculatePurchaseReturn with deposit=cap and supply=0
     const cap = data[3].result;
     if (!cap) return data[4].result;
-    const baseN = 1000n * cap;
-    const { result, precision } = Power.power(baseN, 1n, 1n, 3n); //TODO: get coefficients from smart contract
-    return (result - 1n) >> precision;
-  }, [data]);
+    return getSupply(cap, powerN, powerD, factorN, factorD);
+  }, [data, powerN, powerD, factorN, factorD]);
 
   const chartData = useMemo(() => {
     if (!maxSupply) return undefined;
@@ -300,10 +355,12 @@ export function CoinInfo({ memeCoinAddress, className }: CoinInfoProps) {
         (supply) =>
           [
             Number(formatEther(supply)),
-            Number(formatEther(getPrice(supply))), //TODO: get coefficient from smart contract
+            Number(
+              formatEther(getPrice(supply, powerN, powerD, factorN, factorD)),
+            ),
           ] as [number, number],
       );
-  }, [maxSupply]);
+  }, [maxSupply, powerN, powerD, factorN, factorD]);
 
   const currentProgressPoint = useMemo(
     () =>
@@ -313,7 +370,11 @@ export function CoinInfo({ memeCoinAddress, className }: CoinInfoProps) {
       data[9].result !== undefined
         ? {
             x: Number(formatEther(data[4].result)),
-            y: Number(formatEther(getPrice(data[4].result))), //TODO: get coefficient from smart contract
+            y: Number(
+              formatEther(
+                getPrice(data[4].result, powerN, powerD, factorN, factorD),
+              ),
+            ),
             text:
               Number(
                 (
@@ -322,7 +383,7 @@ export function CoinInfo({ memeCoinAddress, className }: CoinInfoProps) {
               ) + '%',
           }
         : undefined,
-    [data],
+    [data, powerN, powerD, factorN, factorD],
   );
 
   const chartOptions = useChartOptions({
@@ -347,6 +408,7 @@ export function CoinInfo({ memeCoinAddress, className }: CoinInfoProps) {
   } = useSimulateContract({
     ...memeCoinConfig,
     functionName: 'mint',
+    args: [0n], // TODO: slippage
     value: parseEther((amount ?? 0).toString()),
     query: {
       enabled: isBuy && !!amount && Number(amount) > 0,
@@ -360,7 +422,7 @@ export function CoinInfo({ memeCoinAddress, className }: CoinInfoProps) {
   } = useSimulateContract({
     ...memeCoinConfig,
     functionName: 'retire',
-    args: [parseEther((amount ?? 0).toString())],
+    args: [parseEther((amount ?? 0).toString()), 0n], // TODO: slippage
     query: {
       enabled: !isBuy && !!amount && Number(amount) > 0,
     },
@@ -415,7 +477,7 @@ export function CoinInfo({ memeCoinAddress, className }: CoinInfoProps) {
             <h3 className="font-bold text-headline-2 text-shadow">
               {data[1].result} CANDLES
             </h3>
-            <div className="w-full h-[52vh] portrait:h-[90vw] shrink-0 bg-main-gray bg-opacity-50 rounded-x1 content-center">
+            <div className="w-full h-[52vh] portrait:h-[90vw] shrink-0 bg-main-gray bg-opacity-50 backdrop-blur rounded-x1 content-center">
               {candlestickData ? (
                 <LightweightChart
                   className="h-full"
@@ -436,13 +498,13 @@ export function CoinInfo({ memeCoinAddress, className }: CoinInfoProps) {
             <div className="flex flex-col gap-x2 p-x3 w-[460px] max-w-full rounded-x1 bg-gradient-to-b from-main-accent/16 border-2 border-main-shadow backdrop-blur">
               <div className="flex flex-row portrait:flex-col gap-x4 portrait:gap-x2">
                 <CoinIcon
-                  className="mx-auto"
+                  className="mx-auto shrink-0"
                   address={memeCoinAddress}
                   size={120}
                   symbol={data[2].result ?? '$$$'}
                   src={data[8].result}
                 />
-                <div className="flex flex-col gap-x2 flex-1 text-body font-medium tracking-body">
+                <div className="flex flex-col gap-x2 flex-1 text-body font-medium tracking-body min-w-0">
                   <h3 className="font-bold text-title text-shadow">
                     {data[1].result}
                   </h3>
@@ -477,49 +539,34 @@ export function CoinInfo({ memeCoinAddress, className }: CoinInfoProps) {
                         )}
                       </Link>
                     </p>
-                    <p>
-                      Cap:{' '}
-                      <span>
-                        {data[3]?.result ? formatEther(data[3].result) : '???'}{' '}
-                        ETH
-                      </span>
-                    </p>
+                    {data[3]?.result ? (
+                      <p>
+                        Cap: <span>{formatEther(data[3].result)} ETH</span>
+                      </p>
+                    ) : (
+                      <p>
+                        Status: <span>listed</span>
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
-              <div className="flex flex-row gap-x0.5 justify-around">
-                <Link
-                  href={`#TODO`}
-                  passHref
-                  rel="noreferrer"
-                  className="inline-flex px-x1 py-x0.5 text-body font-medium tracking-body uppercase hover:text-shadow active:text-shadow active:text-main-light"
-                >
-                  [Website]{/*TODO: load links*/}
-                </Link>
-                <Link
-                  href={`#TODO`}
-                  passHref
-                  rel="noreferrer"
-                  className="inline-flex px-x1 py-x0.5 text-body font-medium tracking-body uppercase hover:text-shadow active:text-shadow active:text-main-light"
-                >
-                  [Telegram]{/*TODO: load links*/}
-                </Link>
-                <Link
-                  href={`#TODO`}
-                  passHref
-                  rel="noreferrer"
-                  className="inline-flex px-x1 py-x0.5 text-body font-medium tracking-body uppercase hover:text-shadow active:text-shadow active:text-main-light"
-                >
-                  [Twitter]{/*TODO: load links*/}
-                </Link>
-              </div>
-              {data[7].result && (
+              {Object.keys(links).length > 0 && (
+                <div className="flex flex-row gap-x0.5 justify-around">
+                  {Object.entries(links).map(([name, href]) => (
+                    <LinkButton key={href} href={href}>
+                      {name}
+                    </LinkButton>
+                  ))}
+                </div>
+              )}
+              {description && (
                 <p className="bg-main-black bg-opacity-30 rounded-x1 px-x3 py-x2 text-body-2 font-medium tracking-body">
-                  {data[7].result}
+                  {description}
                 </p>
               )}
             </div>
-            {data[3].result && data[3].result > 0n && (
+            {data[3].result && data[3].result > 0n ? (
               <>
                 <div className="flex flex-col gap-x1 p-x3">
                   {!!address && (
@@ -590,7 +637,7 @@ export function CoinInfo({ memeCoinAddress, className }: CoinInfoProps) {
                     <h3 className="font-bold text-headline-2 text-shadow">
                       Bonding curve progress
                     </h3>
-                    <div className="w-full h-auto aspect-square p-x2 xl:p-x3 bg-main-gray bg-opacity-50 rounded-x1 content-center">
+                    <div className="w-full h-auto aspect-square p-x2 xl:p-x3 bg-main-gray bg-opacity-50 backdrop-blur rounded-x1 content-center">
                       {chartData ? (
                         <ApexChart
                           options={chartOptions}
@@ -612,6 +659,10 @@ export function CoinInfo({ memeCoinAddress, className }: CoinInfoProps) {
                   </p>
                 )}
               </>
+            ) : (
+              <p className="font-bold text-headline-2 text-shadow p-x3">
+                Status: Already listed
+              </p>
             )}
           </div>
         </>

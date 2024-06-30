@@ -179,14 +179,15 @@ export function Profile() {
           {profileAddress !== zeroAddress ? (
             <>
               <div className="flex flex-col gap-4 w-full max-w-[420px] text-body tracking-body">
-                <div className="flex flex-row gap-2">
+                <div className="flex flex-row gap-2 overflow-hidden overflow-ellipsis">
                   <ProfileIcon
+                    className="shrink-0"
                     address={profileAddress}
                     size={64}
                     src={profilePicture}
                   />
-                  <div className="flex flex-col gap-1">
-                    <h1 className="text-title font-bold">
+                  <div className="flex flex-col gap-1 min-w-0">
+                    <h1 className="text-title font-bold overflow-hidden overflow-ellipsis">
                       {nicknameToShow || <i>No nickname</i>}
                     </h1>
                     <h2 className="text-body-2 font-medium">

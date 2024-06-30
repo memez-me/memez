@@ -6,10 +6,10 @@ const DECIMALS = 10n ** 18n;
 // (factorN / factorD) * supply ^ (powerN / powerD)
 export function getPrice(
   supply: bigint,
-  powerN: bigint = 2n,
-  powerD: bigint = 1n,
-  factorN: bigint = 1n,
-  factorD: bigint = 3000n,
+  powerN: bigint,
+  powerD: bigint,
+  factorN: bigint,
+  factorD: bigint,
 ) {
   if (supply === 0n) return 0n;
   const { result, precision } = Uint256Power.power(
@@ -26,10 +26,10 @@ export function getPrice(
 // (supply ^ ((powerN + powerD) / powerD)) * (factorN * powerD / factorD / (powerN + powerD))
 export function getCap(
   supply: bigint,
-  powerN: bigint = 2n,
-  powerD: bigint = 1n,
-  factorN: bigint = 1n,
-  factorD: bigint = 3000n,
+  powerN: bigint,
+  powerD: bigint,
+  factorN: bigint,
+  factorD: bigint,
 ) {
   const powerNOfPowerPlus1 = powerN + powerD;
   const { result, precision } = Uint256Power.power(
@@ -48,16 +48,17 @@ export function getCap(
 // (cap * (powerN + powerD) * factorD / factorN / powerD) ^ (powerD / (powerN + powerD))
 export function getSupply(
   cap: bigint,
-  powerN: bigint = 2n,
-  powerD: bigint = 1n,
-  factorN: bigint = 1n,
-  factorD: bigint = 3000n,
+  powerN: bigint,
+  powerD: bigint,
+  factorN: bigint,
+  factorD: bigint,
 ) {
   const powerNOfPowerPlus1 = powerN + powerD;
-  const base = (cap * powerNOfPowerPlus1 * factorD) / factorN / powerD;
+  const baseN = cap * powerNOfPowerPlus1 * factorD;
+  const baseD = factorN * powerD;
   const { result, precision } = Uint256Power.power(
-    base,
-    1n,
+    baseN,
+    baseD,
     powerD,
     powerNOfPowerPlus1,
   );

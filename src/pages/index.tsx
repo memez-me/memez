@@ -2,8 +2,9 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import PageHead from '../components/PageHead';
 import Link from 'next/link';
 import { useMemeCoinConfig, useMemezFactoryConfig } from '../hooks';
-import { Address, isAddress, zeroAddress } from 'viem';
+import { Address, getAbiItem, isAddress, zeroAddress } from 'viem';
 import {
+  useClient,
   useInfiniteReadContracts,
   useReadContract,
   useReadContracts,
@@ -13,6 +14,9 @@ import MemeCoinCard from '../components/MemeCoinCard';
 import { useRouter } from 'next/router';
 import { CoinInfo } from '../components/panels';
 import InfiniteScroll from 'react-infinite-scroll-component';
+import { LinkButton } from '../components/buttons';
+import { useMemeCoinListingManagerConfig } from '../hooks/contracts/useMemeCoinListingManager';
+import { getLogs } from 'viem/actions';
 
 const paginationLimit = 12;
 
@@ -43,7 +47,9 @@ const memecoinFunctionsToCall = [
 
 export function Index() {
   const router = useRouter();
+  const client = useClient();
   const [currentPage, setCurrentPage] = useState(0);
+  const [listedCount, setListedCount] = useState<number>();
   const [isLoading, setIsLoading] = useState(false);
   const [cachedMemecoinsPages, setCachedMemecoinsPages] = useState<
     (MemeCoinData & { address: Address })[][]
@@ -61,7 +67,22 @@ export function Index() {
   );
 
   const memezFactoryConfig = useMemezFactoryConfig();
+  const listingManagerConfig = useMemeCoinListingManagerConfig();
   const memeCoinConfig = useMemeCoinConfig(zeroAddress); // address will be overridden
+
+  useEffect(() => {
+    if (!client || !listingManagerConfig) return;
+
+    getLogs(client, {
+      address: listingManagerConfig.address,
+      event: getAbiItem({
+        abi: listingManagerConfig.abi,
+        name: 'MemeCoinListed',
+      }),
+      strict: true,
+      fromBlock: 'earliest',
+    }).then((listedEvents) => setListedCount(listedEvents.length * 2 + 1));
+  }, [client, listingManagerConfig]);
 
   const { data: count } = useReadContract({
     ...memezFactoryConfig,
@@ -265,10 +286,26 @@ export function Index() {
                 [create memecoin]
               </span>
             </Link>
-            <h3 className="text-headline font-bold text-left self-start">
-              Total memecoins:{' '}
-              {count !== undefined ? Number(count) : 'loading...'}
-            </h3>
+            <div className="flex flex-row flex-wrap w-full justify-between">
+              <h3 className="text-headline font-bold text-left self-start">
+                Total{' '}
+                <LinkButton className="text-headline font-bold !p-0" href="/">
+                  memecoins
+                </LinkButton>
+                : {count !== undefined ? Number(count) : 'loading...'}
+              </h3>
+              <h3 className="text-headline font-bold text-right self-end">
+                Listed{' '}
+                <LinkButton
+                  className="text-headline font-bold !p-0"
+                  href="/pools"
+                >
+                  pools
+                </LinkButton>
+                :{' '}
+                {listedCount !== undefined ? Number(listedCount) : 'loading...'}
+              </h3>
+            </div>
           </div>
         )}
         <div className="flex flex-row w-full justify-center overflow-hidden">

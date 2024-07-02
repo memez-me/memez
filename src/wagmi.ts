@@ -9,7 +9,7 @@ const metadata = {
   name: 'memez',
   description: 'memez memecoins app',
   url: 'https://memez.me',
-  icons: ['https://memez.me/icon.png'],
+  icons: ['https://memez.me/icon.svg'],
 };
 
 const fraxtalVirtual = {

@@ -21,8 +21,7 @@ function PageHead({ title, subtitle, description, image }: PageHeadProps) {
       <meta property="og:title" content={title} />
       <meta property="og:description" content={description} />
       {/*<meta property="og:image" content={image || url('/logo-icon.svg')} />*/}
-      {/*<link rel="icon" href="/logo-icon.svg" type="image/svg+xml" />*/}
-      <link rel="icon" href="/icon.png" type="image/png" />{' '}
+      <link rel="icon" href="/icon.svg" type="image/svg+xml" />
       {/*TODO: add normal icon*/}
       {/*<link rel="apple-touch-icon" href="/apple-touch-icon.png" />*/}
       {/*<link rel="manifest" href="/manifest.json" />*/}

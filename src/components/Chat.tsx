@@ -131,7 +131,10 @@ function Chat({ memecoin, className }: ChatProps) {
   const { signMessageAsync } = useSignMessage();
 
   const sendChatMessage = useCallback(async () => {
-    if (!address || memecoin === zeroAddress) return;
+    if (!address || memecoin === zeroAddress) {
+      alert('Connect your wallet to send messages!');
+      return;
+    }
     setIsPending(true);
     try {
       if (getIsNewSignatureNeeded(address)) {
@@ -151,7 +154,10 @@ function Chat({ memecoin, className }: ChatProps) {
 
   const likeChatMessage = useCallback(
     async (messageId: string) => {
-      if (!address || !messageId) return;
+      if (!address || !messageId) {
+        alert('Connect your wallet to like messages!');
+        return;
+      }
       setIsPending(true);
       try {
         if (getIsNewSignatureNeeded(address)) {

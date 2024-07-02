@@ -1,20 +1,24 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Address, zeroAddress } from 'viem';
 import { useMemezFactoryConfig } from '../hooks';
-import {
-  useAccount,
-  useReadContract,
-  useReadContracts,
-  useSimulateContract,
-  useWaitForTransactionReceipt,
-  useWriteContract,
-} from 'wagmi';
+import { useAccount, useReadContracts, useSignMessage } from 'wagmi';
 import _ from 'lodash';
 import TextInput from './TextInput';
 import { PrimaryButton } from './buttons';
 import { trimAddress } from '../utils';
 import Link from 'next/link';
 import { LikeIcon, ProfileIcon } from './icons';
+import {
+  ChatMessage,
+  getIsNewSignatureNeeded,
+  getLikes,
+  getMessages,
+  getMessageToSign,
+  likeMessage,
+  saveSignedMessage,
+  sendMessage,
+  unlikeMessage,
+} from '../apis';
 
 type AccountPartialInfo = {
   nickname: string;
@@ -27,149 +31,160 @@ type ChatProps = {
 };
 
 function Chat({ memecoin, className }: ChatProps) {
-  //TODO: implement chat (backend API)
   const { address } = useAccount();
+  const [isPending, setIsPending] = useState(false);
   const [text, setText] = useState('');
-  // const [accounts, setAccounts] = useState<Record<Address, AccountPartialInfo>>(
-  //   {},
-  // );
-  //
-  // const memezChatConfig = useMemezFactoryConfig();
-  //
-  // const { data: messagesCount = 0n, refetch: refetchCount } = useReadContract({
-  //   ...memezChatConfig,
-  //   functionName: 'getThreadLength',
-  //   args: [memecoin],
-  //   query: {
-  //     enabled: memecoin !== zeroAddress,
-  //     refetchInterval: 5000,
-  //   },
-  // });
-  //
-  // const { data: messages, refetch: refetchMessages } = useReadContracts({
-  //   contracts: [...new Array(Number(messagesCount))].map(
-  //     (_, index) =>
-  //       ({
-  //         ...memezChatConfig,
-  //         functionName: 'threads',
-  //         args: [memecoin, BigInt(index)],
-  //       }) as const,
-  //   ),
-  //   query: {
-  //     enabled: messagesCount > 0n,
-  //   },
-  // });
-  //
-  // const { data: likes, refetch: refetchLikes } = useReadContracts({
-  //   contracts: [...new Array(Number(messagesCount))].map(
-  //     (_, index) =>
-  //       ({
-  //         ...memezChatConfig,
-  //         functionName: 'isThreadMessageLikedByUser',
-  //         args: [memecoin, BigInt(index), address!],
-  //       }) as const,
-  //   ),
-  //   query: {
-  //     enabled: messagesCount > 0n && !!address,
-  //   },
-  // });
-  //
-  // const allUsersAddresses = useMemo(
-  //   () =>
-  //     new Set((messages ?? []).map(({ result }) => result?.[1] ?? zeroAddress)),
-  //   [messages],
-  // );
-  //
-  // const notCachedUsers = useMemo(
-  //   () => [...allUsersAddresses].filter((address) => !accounts[address]),
-  //   [accounts, allUsersAddresses],
-  // );
-  //
-  // const { data: fetchedUsers } = useReadContracts({
-  //   contracts: notCachedUsers.map(
-  //     (profileAddress) =>
-  //       ({
-  //         ...memezChatConfig,
-  //         functionName: 'accounts',
-  //         args: [profileAddress],
-  //       }) as const,
-  //   ),
-  //   query: {
-  //     enabled: notCachedUsers.length > 0,
-  //   },
-  // });
-  //
-  // useEffect(() => {
-  //   if (!fetchedUsers) return;
-  //   const newUsers = _.fromPairs(
-  //     _.zip(
-  //       notCachedUsers,
-  //       fetchedUsers.map(({ result }) =>
-  //         result
-  //           ? ({
-  //               nickname: result[0],
-  //               profilePicture: result[1],
-  //             } as AccountPartialInfo)
-  //           : undefined,
-  //       ),
-  //     ),
-  //   );
-  //   setAccounts((previous) => ({
-  //     ...previous,
-  //     ...newUsers,
-  //   }));
-  // }, [notCachedUsers, fetchedUsers]);
-  //
-  // const { data: addMessageData, error: addMessageError } = useSimulateContract({
-  //   ...memezChatConfig,
-  //   functionName: 'addMessage',
-  //   args: [memecoin, text],
-  //   query: {
-  //     enabled: memecoin !== zeroAddress && !!text,
-  //   },
-  // });
-  //
-  // const addMessageSimulationError = useMemo(
-  //   () =>
-  //     addMessageError
-  //       ? (addMessageError.cause as any)?.reason ?? addMessageError.message
-  //       : null,
-  //   [addMessageError],
-  // );
-  //
-  // const {
-  //   data: addMessageHash,
-  //   writeContractAsync: writeAddMessageContractAsync,
-  //   isPending: isAddMessagePending,
-  //   reset: resetAddMessage,
-  // } = useWriteContract();
-  //
-  // const { isLoading: isAddMessageConfirming } = useWaitForTransactionReceipt({
-  //   hash: addMessageHash,
-  // });
-  //
-  // const sendMessage = useCallback(() => {
-  //   writeAddMessageContractAsync(addMessageData!.request)
-  //     .then(() => {
-  //       refetchCount().then(() =>
-  //         Promise.all([refetchMessages(), refetchLikes()]).then(() => {
-  //           setText('');
-  //           resetAddMessage();
-  //         }),
-  //       );
-  //     })
-  //     .catch((e) => console.error(e));
-  // }, [
-  //   writeAddMessageContractAsync,
-  //   addMessageData,
-  //   refetchCount,
-  //   refetchMessages,
-  //   refetchLikes,
-  //   resetAddMessage,
-  // ]);
-  //
-  // const { writeContractAsync: writeLikeMessageContractAsync } =
-  //   useWriteContract();
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [likedMapping, setLikedMapping] = useState<
+    Record<Address, Record<string, boolean>>
+  >({});
+  const [accounts, setAccounts] = useState<Record<Address, AccountPartialInfo>>(
+    {},
+  );
+
+  const orderedMessages = useMemo(
+    () => messages.sort((a, b) => a.timestamp - b.timestamp),
+    [messages],
+  );
+
+  const memezChatConfig = useMemezFactoryConfig();
+
+  useEffect(() => {
+    setMessages([]);
+    setText('');
+    if (memecoin === zeroAddress) return;
+    getMessages(memecoin).then((newMessages) => setMessages(newMessages ?? []));
+  }, [memecoin]);
+
+  const lastMessageTimestamp = useMemo(
+    () => _.last(messages)?.timestamp ?? 0,
+    [messages],
+  );
+
+  useEffect(() => {
+    if (memecoin === zeroAddress) return;
+    const interval = setInterval(
+      () =>
+        getMessages(memecoin, lastMessageTimestamp).then((newMessages) =>
+          setMessages((old) => _.uniqBy([...old, ...newMessages], 'id')),
+        ),
+      5000,
+    );
+    return () => clearInterval(interval);
+  }, [memecoin, lastMessageTimestamp]);
+
+  useEffect(() => {
+    if (!address) return;
+    getLikes(address).then((likes) =>
+      setLikedMapping((old) => ({
+        ...old,
+        [address]: _.fromPairs(likes.map((like) => [like.messageId, true])),
+      })),
+    );
+  }, [address]);
+
+  const allUsersAddresses = useMemo(
+    () => new Set((messages ?? []).map(({ author }) => author)),
+    [messages],
+  );
+
+  const notCachedUsers = useMemo(
+    () => [...allUsersAddresses].filter((address) => !accounts[address]),
+    [accounts, allUsersAddresses],
+  );
+
+  const { data: fetchedUsers } = useReadContracts({
+    contracts: notCachedUsers.map(
+      (profileAddress) =>
+        ({
+          ...memezChatConfig,
+          functionName: 'accounts',
+          args: [profileAddress],
+        }) as const,
+    ),
+    query: {
+      enabled: notCachedUsers.length > 0,
+    },
+  });
+
+  useEffect(() => {
+    if (!fetchedUsers) return;
+    const newUsers = _.fromPairs(
+      _.zip(
+        notCachedUsers,
+        fetchedUsers.map(({ result }) =>
+          result
+            ? ({
+                nickname: result[0],
+                profilePicture: result[1],
+              } as AccountPartialInfo)
+            : undefined,
+        ),
+      ),
+    );
+    setAccounts((previous) => ({
+      ...previous,
+      ...newUsers,
+    }));
+  }, [notCachedUsers, fetchedUsers]);
+
+  const { signMessageAsync } = useSignMessage();
+
+  const sendChatMessage = useCallback(async () => {
+    if (!address || memecoin === zeroAddress) return;
+    setIsPending(true);
+    try {
+      if (getIsNewSignatureNeeded(address)) {
+        const { timestamp, message } = getMessageToSign();
+        const signature = await signMessageAsync({ message });
+        saveSignedMessage(address, timestamp, signature);
+      }
+      const message = await sendMessage(memecoin, text, address);
+      setMessages((old) => [...old, message]);
+      setText('');
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsPending(false);
+    }
+  }, [address, memecoin, signMessageAsync, text]);
+
+  const likeChatMessage = useCallback(
+    async (messageId: string) => {
+      if (!address || !messageId) return;
+      setIsPending(true);
+      try {
+        if (getIsNewSignatureNeeded(address)) {
+          const { timestamp, message } = getMessageToSign();
+          const signature = await signMessageAsync({ message });
+          saveSignedMessage(address, timestamp, signature);
+        }
+
+        const { likes } = await (
+          likedMapping[address]?.[messageId] ? unlikeMessage : likeMessage
+        )?.(messageId, address);
+        setMessages((old) => [
+          ...old.filter((msg) => msg.id !== messageId),
+          {
+            ...old.find((msg) => msg.id === messageId)!,
+            likes,
+          },
+        ]);
+        setLikedMapping((old) => ({
+          ...old,
+          [address]: {
+            ...old[address],
+            [messageId]: !old[address]?.[messageId],
+          },
+        }));
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setIsPending(false);
+      }
+    },
+    [address, likedMapping, signMessageAsync],
+  );
 
   return (
     <div className={`flex flex-col gap-x3 ${className}`}>
@@ -181,93 +196,74 @@ function Chat({ memecoin, className }: ChatProps) {
           placeholder="Send message"
           type="text"
           isSmall
-          disabled={
-            true
-            // isAddMessagePending || isAddMessageConfirming
-          }
+          disabled={isPending}
           onChange={(e) => setText(e.target.value)}
         />
         <PrimaryButton
           isSmall
-          disabled={
-            true
-            // !addMessageData?.request ||
-            // isAddMessagePending ||
-            // isAddMessageConfirming
-          }
-          // onClick={sendMessage}
+          disabled={!text || isPending}
+          onClick={sendChatMessage}
         >
           Send
         </PrimaryButton>
       </div>
-      {/*{addMessageSimulationError && (*/}
-      {/*  <p className="text-second-error">Error: {addMessageSimulationError}</p>*/}
-      {/*)}*/}
-      <div className="flex flex-col-reverse gap-x2 overflow-x-hidden">
-        {false ? null : (
-          // messages
-          //   .filter((m) => !!m.result)
-          //   .map(
-          //     ({ result }, i) =>
-          //       result && (
-          //         <div
-          //           key={i}
-          //           className="flex flex-col py-x1 border-b first:border-0 border-main-shadow"
-          //         >
-          //           <div className="flex flex-row gap-x1">
-          //             <div className="min-w-0 overflow-hidden overflow-ellipsis text-nowrap">
-          //               <Link
-          //                 href={`/profile?address=${result[1]}`}
-          //                 passHref
-          //                 rel="noreferrer"
-          //                 className="disabled:shadow hover:font-bold hover:text-main-light focus:text-main-light active:text-main-shadow"
-          //               >
-          //                 {!accounts[result[1]] ? (
-          //                   trimAddress(result[1])
-          //                 ) : (
-          //                   <>
-          //                     <ProfileIcon
-          //                       className="inline"
-          //                       address={result[1]}
-          //                       size={16}
-          //                       src={accounts[result[1]].profilePicture}
-          //                     />{' '}
-          //                     {accounts[result[1]].nickname ||
-          //                       trimAddress(result[1])}
-          //                   </>
-          //                 )}{' '}
-          //                 {address === result[1] && <i>(You)</i>}
-          //               </Link>
-          //             </div>
-          //             <div className="flex flex-row gap-x0.5 shrink-0 items-center text-footnote font-regular tracking-footnote content-center">
-          //               <button
-          //                 onClick={() =>
-          //                   writeLikeMessageContractAsync({
-          //                     ...memezChatConfig,
-          //                     functionName: 'likeMessage',
-          //                     args: [memecoin, BigInt(i)],
-          //                   }).then(
-          //                     () =>
-          //                       Promise.all([
-          //                         refetchMessages(),
-          //                         refetchLikes(),
-          //                       ]),
-          //                     (e) => console.error(e),
-          //                   )
-          //                 }
-          //               >
-          //                 <LikeIcon isActive={likes?.[i]?.result} size={20} />
-          //               </button>
-          //               <span>{result[3]}</span>
-          //             </div>
-          //             <span className="ml-auto shrink-0 text-right text-footnote font-regular tracking-footnote content-center">
-          //               {new Date(result[2] * 1000).toLocaleString()}
-          //             </span>
-          //           </div>
-          //           <p>{result[0]}</p>
-          //         </div>
-          //       ),
-          //   )
+      <div className="flex flex-col-reverse gap-x1 overflow-x-hidden">
+        {orderedMessages.length > 0 ? (
+          orderedMessages.map(({ id, likes, timestamp, author, message }) => (
+            <div
+              key={id}
+              className="flex flex-col gap-x0.5 px-x3 py-x2 bg-main-black bg-opacity-30 rounded-x1 backdrop-blur"
+            >
+              <div className="flex flex-row flex-wrap gap-x2 items-center">
+                <div className="min-w-0 overflow-hidden overflow-ellipsis text-nowrap">
+                  <Link
+                    href={`/profile?address=${author}`}
+                    passHref
+                    rel="noreferrer"
+                    className="flex flex-row flex-1 flex-nowrap items-center gap-x1 text-nowrap overflow-hidden overflow-ellipsis disabled:shadow hover:font-bold hover:text-shadow focus:text-shadow active:text-shadow"
+                  >
+                    <ProfileIcon
+                      className="inline shrink-0"
+                      address={author}
+                      size={24}
+                      src={accounts[author]?.profilePicture}
+                    />
+                    <span className="text-footnote font-regular tracking-footnote text-main-shadow bg-main-accent rounded-x0.5 h-x3 px-x0.5 content-center overflow-hidden overflow-ellipsis">
+                      {accounts[author]?.nickname || trimAddress(author)}
+                    </span>
+                  </Link>
+                </div>
+                <div className="flex flex-row gap-x1 shrink-0 items-center text-footnote font-regular tracking-footnote content-center">
+                  <button onClick={() => likeChatMessage(id)}>
+                    <LikeIcon
+                      isActive={address ? likedMapping[address]?.[id] : false}
+                      size={32}
+                    />
+                  </button>
+                  {likes > 0 && (
+                    <span
+                      className={`font-medium text-headline-2
+                        ${
+                          address && likedMapping[address]?.[id]
+                            ? 'text-main-light'
+                            : 'text-main-accent'
+                        }
+                      `}
+                    >
+                      {likes}
+                    </span>
+                  )}
+                </div>
+                <span
+                  className={`ml-auto shrink-0 text-right text-footnote font-regular tracking-footnote content-center ${author === address ? 'text-main-light' : ''}`}
+                >
+                  {new Date(timestamp * 1000).toLocaleString()}
+                </span>
+              </div>
+              <p className="text-body font-regular tracking-body">{message}</p>
+            </div>
+          ))
+        ) : (
           <h4 className="text-title font-medium text-center">
             No messages yet
           </h4>

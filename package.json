@@ -42,6 +42,7 @@
     "@tanstack/react-query": "^5.40.1",
     "@web3modal/wagmi": "^4.2.3",
     "apexcharts": "^3.49.1",
+    "axios": "^1.7.2",
     "color": "^4.2.3",
     "lightweight-charts": "^4.1.5",
     "mersenne-twister": "^1.1.0",

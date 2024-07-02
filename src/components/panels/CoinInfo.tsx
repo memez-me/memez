@@ -477,7 +477,7 @@ export function CoinInfo({ memeCoinAddress, className }: CoinInfoProps) {
             <h3 className="font-bold text-headline-2 text-shadow">
               {data[1].result} CANDLES
             </h3>
-            <div className="w-full h-[52vh] portrait:h-[90vw] shrink-0 bg-main-gray bg-opacity-50 backdrop-blur rounded-x1 content-center">
+            <div className="w-full h-[32vh] portrait:h-[90vw] shrink-0 bg-main-gray bg-opacity-50 backdrop-blur rounded-x1 content-center">
               {candlestickData ? (
                 <LightweightChart
                   className="h-full"

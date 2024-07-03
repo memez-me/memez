@@ -252,7 +252,7 @@ export function Index() {
     <>
       <PageHead title="memez" description="memez memecoins app" />
       <div
-        className={`flex flex-col gap-x4 justify-center items-center ${!!memeCoinAddress ? 'overflow-hidden' : ''}`}
+        className={`container self-center flex flex-col gap-x4 justify-center items-center ${!!memeCoinAddress ? 'overflow-hidden' : ''}`}
       >
         {!memeCoinAddress && (
           <div className="container flex flex-col gap-x6 pt-x2">

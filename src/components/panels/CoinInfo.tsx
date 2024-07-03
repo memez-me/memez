@@ -3,6 +3,7 @@ import Link from 'next/link';
 import {
   useChartOptions,
   useMemeCoinConfig,
+  useMemezConfig,
   useMemezFactoryConfig,
 } from '../../hooks';
 import {
@@ -40,6 +41,7 @@ import LightweightChart from '../LightweightChart';
 import type { UTCTimestamp } from 'lightweight-charts';
 import { CoinIcon, ProfileIcon } from '../icons';
 import Chat from '../Chat';
+import { SwapInterface } from '../swap';
 
 type CoinInfoProps = {
   memeCoinAddress: Address;
@@ -58,6 +60,7 @@ export function CoinInfo({ memeCoinAddress, className }: CoinInfoProps) {
 
   const memezFactoryConfig = useMemezFactoryConfig();
   const memeCoinConfig = useMemeCoinConfig(memeCoinAddress);
+  const { address: memezAddress } = useMemezConfig();
 
   const getMintRetireLogsAsync = useCallback(
     async (fromBlock?: bigint | BlockTag) => {
@@ -248,6 +251,29 @@ export function CoinInfo({ memeCoinAddress, className }: CoinInfoProps) {
       refetchInterval: 5000,
     },
   });
+
+  const tripletTokensInfo = useMemo(
+    () => [
+      {
+        address: memeCoinAddress,
+        symbol: data?.[2]?.result ?? '$$$',
+        name: data?.[1]?.result ?? 'MemeCoin',
+      },
+      {
+        address: memezAddress,
+        symbol: 'MEMEZ',
+        name: 'MEMEZ Coin',
+        src: './icon.svg',
+      },
+      {
+        address: zeroAddress,
+        symbol: 'frxETH',
+        name: 'Frax Ether',
+        src: '/native.svg',
+      },
+    ],
+    [memeCoinAddress, memezAddress, data],
+  );
 
   const { powerN, powerD, factorN, factorD } = useMemo(
     () => ({
@@ -469,15 +495,103 @@ export function CoinInfo({ memeCoinAddress, className }: CoinInfoProps) {
 
   return (
     <div
-      className={`flex flex-row portrait:flex-col-reverse py-x1 px-x1 md:px-x3 lg:px-x7 xl:px-x11 gap-x3 rounded-x1 bg-transparent items-start ${className}`}
+      className={`flex flex-row portrait:flex-col-reverse py-x1 px-x1 md:px-x3 gap-x3 rounded-x1 bg-transparent items-start ${className}`}
     >
       {data && data.every((d) => d.status === 'success') && !isError ? (
         <>
           <div className="flex flex-col flex-1 gap-x3 p-x1 landscape:overflow-auto landscape:h-full portrait:w-full">
+            <div className="flex flex-col gap-x2 p-x3 w-full rounded-x1 bg-gradient-to-b from-main-accent/16 border border-main-shadow backdrop-blur">
+              <div className="flex flex-row portrait:flex-col gap-x2">
+                <CoinIcon
+                  className="mx-auto shrink-0"
+                  address={memeCoinAddress}
+                  size={120}
+                  symbol={data[2].result ?? '$$$'}
+                  src={data[8].result}
+                />
+                <div className="flex flex-col flex-1 text-body font-medium tracking-body min-w-0 shrink-0 py-x1">
+                  <h3 className="font-bold text-title text-shadow">
+                    {data[1].result}
+                  </h3>
+                  <div className="flex flex-col text-footnote font-bold tracking-footnote">
+                    <p>
+                      Symbol: <span>{data[2].result}</span>
+                    </p>
+                    <p>
+                      Token supply:{' '}
+                      <span>
+                        {Number(
+                          Number(formatEther(data[4].result ?? 0n)).toFixed(3),
+                        )}{' '}
+                        {data[2].result ?? '$$$'}
+                      </span>
+                    </p>
+                    {data[3]?.result ? (
+                      <p className="mt-x1 text-second-success text-footnote font-bold tracking-footnote">
+                        Cap:{' '}
+                        <span>
+                          {Number(
+                            Number(formatEther(data[9].result ?? 0n)).toFixed(
+                              3,
+                            ),
+                          )}
+                          /{formatEther(data[3].result)} ETH
+                        </span>
+                      </p>
+                    ) : (
+                      <p className="mt-x1 text-second-success text-footnote font-bold tracking-footnote">
+                        Status: <span>listed</span>
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <p className="landscape:w-[50%] landscape:max-h-[120px] shrink bg-main-black bg-opacity-30 rounded-x1 px-x3 py-x2 text-body-2 font-medium tracking-body overflow-auto">
+                  {description || <i>No description provided</i>}
+                </p>
+              </div>
+              <div className="flex flex-row portrait:flex-col gap-x2 flex-wrap">
+                <p className="flex flex-row flex-nowrap items-center gap-x1 text-nowrap overflow-hidden overflow-ellipsis">
+                  <span className="text-body-2 font-medium tracking-body">
+                    Created by:
+                  </span>
+                  <Link
+                    href={`/profile?address=${data[6].result}`}
+                    passHref
+                    rel="noreferrer"
+                    className="flex flex-row flex-1 flex-nowrap items-center gap-x1 text-nowrap overflow-hidden overflow-ellipsis disabled:shadow hover:font-bold hover:text-shadow focus:text-shadow active:text-shadow"
+                  >
+                    {!ownerData ? (
+                      <span>{trimAddress(data[6].result ?? zeroAddress)}</span>
+                    ) : (
+                      <>
+                        <ProfileIcon
+                          className="inline shrink-0"
+                          address={data[6].result ?? zeroAddress}
+                          size={24}
+                          src={ownerData[1]}
+                        />
+                        <span className="text-footnote font-regular tracking-footnote text-main-shadow bg-main-accent rounded-x0.5 h-x3 px-x0.5 content-center overflow-hidden overflow-ellipsis">
+                          {ownerData[0] || trimAddress(data[6].result!)}
+                        </span>
+                      </>
+                    )}
+                  </Link>
+                </p>
+                {Object.keys(links).length > 0 && (
+                  <div className="flex flex-row flex-wrap gap-x0.5 justify-around ml-auto">
+                    {Object.entries(links).map(([name, href]) => (
+                      <LinkButton key={href} href={href}>
+                        {name}
+                      </LinkButton>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
             <h3 className="font-bold text-headline-2 text-shadow">
               {data[1].result} CANDLES
             </h3>
-            <div className="w-full h-[32vh] portrait:h-[90vw] shrink-0 bg-main-gray bg-opacity-50 backdrop-blur rounded-x1 content-center">
+            <div className="w-full h-[32vh] portrait:h-[90vw] shrink-0 bg-main-gray backdrop-blur rounded-x1 content-center">
               {candlestickData ? (
                 <LightweightChart
                   className="h-full"
@@ -494,81 +608,10 @@ export function CoinInfo({ memeCoinAddress, className }: CoinInfoProps) {
             </div>
             <Chat className="w-full" memecoin={memeCoinAddress} />
           </div>
-          <div className="flex flex-col p-x1 landscape:overflow-auto landscape:h-full portrait:w-full">
-            <div className="flex flex-col gap-x2 p-x3 w-[460px] max-w-full rounded-x1 bg-gradient-to-b from-main-accent/16 border-2 border-main-shadow backdrop-blur">
-              <div className="flex flex-row portrait:flex-col gap-x4 portrait:gap-x2">
-                <CoinIcon
-                  className="mx-auto shrink-0"
-                  address={memeCoinAddress}
-                  size={120}
-                  symbol={data[2].result ?? '$$$'}
-                  src={data[8].result}
-                />
-                <div className="flex flex-col gap-x2 flex-1 text-body font-medium tracking-body min-w-0">
-                  <h3 className="font-bold text-title text-shadow">
-                    {data[1].result}
-                  </h3>
-                  <div className="flex flex-col gap-x0.5 text-body font-medium tracking-body">
-                    <p className="text-body-2 font-medium tracking-body">
-                      Symbol: <span>{data[2].result}</span>
-                    </p>
-                    <p className="flex flex-row flex-nowrap items-center gap-x2 text-nowrap overflow-hidden overflow-ellipsis">
-                      <span>Created by</span>
-                      <Link
-                        href={`/profile?address=${data[6].result}`}
-                        passHref
-                        rel="noreferrer"
-                        className="flex flex-row flex-1 flex-nowrap items-center gap-x1 text-nowrap overflow-hidden overflow-ellipsis disabled:shadow hover:font-bold hover:text-shadow focus:text-shadow active:text-shadow"
-                      >
-                        {!ownerData ? (
-                          <span>
-                            {trimAddress(data[6].result ?? zeroAddress)}
-                          </span>
-                        ) : (
-                          <>
-                            <ProfileIcon
-                              className="inline shrink-0"
-                              address={data[6].result ?? zeroAddress}
-                              size={24}
-                              src={ownerData[1]}
-                            />
-                            <span className="text-footnote font-regular tracking-footnote text-main-shadow bg-main-accent rounded-x0.5 h-x3 px-x0.5 content-center overflow-hidden overflow-ellipsis">
-                              {ownerData[0] || trimAddress(data[6].result!)}
-                            </span>
-                          </>
-                        )}
-                      </Link>
-                    </p>
-                    {data[3]?.result ? (
-                      <p>
-                        Cap: <span>{formatEther(data[3].result)} ETH</span>
-                      </p>
-                    ) : (
-                      <p>
-                        Status: <span>listed</span>
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-              {Object.keys(links).length > 0 && (
-                <div className="flex flex-row gap-x0.5 justify-around">
-                  {Object.entries(links).map(([name, href]) => (
-                    <LinkButton key={href} href={href}>
-                      {name}
-                    </LinkButton>
-                  ))}
-                </div>
-              )}
-              {description && (
-                <p className="bg-main-black bg-opacity-30 rounded-x1 px-x3 py-x2 text-body-2 font-medium tracking-body">
-                  {description}
-                </p>
-              )}
-            </div>
+          <div className="flex flex-col p-x1 landscape:overflow-auto landscape:h-full landscape:w-[37%] landscape:min-w-[400px] portrait:w-full">
             {data[3].result && data[3].result > 0n ? (
-              <>
-                <div className="flex flex-col gap-x1 p-x3">
+              <div className="flex flex-col gap-x2 p-x3 max-w-full rounded-x1 bg-main-gray border border-main-shadow backdrop-blur">
+                <div className="flex flex-col gap-x1">
                   {!!address && (
                     <p className="font-bold text-headline-2 text-shadow mb-x1">
                       My balance:{' '}
@@ -632,37 +675,34 @@ export function CoinInfo({ memeCoinAddress, className }: CoinInfoProps) {
                     )}
                   </div>
                 </div>
-                {data[3].result && data[3].result > 0n ? (
-                  <div className="flex flex-col gap-x2 p-x3">
-                    <h3 className="font-bold text-headline-2 text-shadow">
-                      Bonding curve progress
-                    </h3>
-                    <div className="w-full h-auto aspect-square p-x2 xl:p-x3 bg-main-gray bg-opacity-50 backdrop-blur rounded-x1 content-center">
-                      {chartData ? (
-                        <ApexChart
-                          options={chartOptions}
-                          series={[{ data: chartData }]}
-                          type="area"
-                          width="100%"
-                          height="100%"
-                        />
-                      ) : (
-                        <p className="text-center">
-                          Not enough data for bonding curve chart
-                        </p>
-                      )}
-                    </div>
+                <div className="flex flex-col gap-x2">
+                  <h3 className="font-bold text-headline-2 text-shadow">
+                    Bonding curve progress
+                  </h3>
+                  <div className="w-full h-auto aspect-square p-x2 xl:p-x3 bg-main-black bg-opacity-10 backdrop-blur rounded-x1 content-center">
+                    {chartData ? (
+                      <ApexChart
+                        options={chartOptions}
+                        series={[{ data: chartData }]}
+                        type="area"
+                        width="100%"
+                        height="100%"
+                      />
+                    ) : (
+                      <p className="text-center">
+                        Not enough data for bonding curve chart
+                      </p>
+                    )}
                   </div>
-                ) : (
-                  <p>
-                    Status: <b>Already listed</b>
-                  </p>
-                )}
-              </>
+                </div>
+              </div>
             ) : (
-              <p className="font-bold text-headline-2 text-shadow p-x3">
-                Status: Already listed
-              </p>
+              <div className="flex flex-col gap-x2 p-x3 max-w-full rounded-x1 bg-main-gray border border-main-shadow backdrop-blur">
+                <p className="font-bold text-headline-2 text-shadow">
+                  Swap via Fraxswap
+                </p>
+                <SwapInterface className="w-full" tokens={tripletTokensInfo} />
+              </div>
             )}
           </div>
         </>

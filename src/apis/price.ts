@@ -16,7 +16,24 @@ export async function getPrice<
   return res?.data ?? {};
 }
 
+const cacheTimeMs = 60 * 60 * 1000; // 1 hour
+
+let cachedEthUsdPrice: {
+  price: number;
+  timestamp: number;
+};
+
 export async function getEthPriceInUsd() {
-  const result = await getPrice(['ethereum'] as const, ['usd'] as const);
-  return result.ethereum.usd;
+  if (
+    !cachedEthUsdPrice ||
+    cachedEthUsdPrice.timestamp + cacheTimeMs <= Date.now()
+  ) {
+    const result = await getPrice(['ethereum'] as const, ['usd'] as const);
+    cachedEthUsdPrice = {
+      price: result.ethereum.usd,
+      timestamp: Date.now(),
+    };
+  }
+
+  return cachedEthUsdPrice.price;
 }

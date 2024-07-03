@@ -66,6 +66,7 @@ export function Layout({ children }: { children: ReactNode }) {
         height="575"
         viewBox="0 0 1920 575"
         fill="none"
+        preserveAspectRatio="none"
       >
         <path
           opacity="0.5"

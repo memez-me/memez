@@ -117,19 +117,19 @@ function CustomJazzIcon({
   );
 }
 
-function CoinIcon({ src, ...otherProps }: CoinIconProps) {
+function CoinIcon({ src, className, ...otherProps }: CoinIconProps) {
   const imageSrc = useMemo(() => src || null, [src]);
 
   return imageSrc ? (
     <Image
-      className={`rounded-full object-contain ${otherProps.className}`}
+      className={`rounded-x4 object-contain ${className}`}
       src={imageSrc}
       width={otherProps.size}
       height={otherProps.size}
       alt={`Profile picture of ${otherProps.address}`}
     />
   ) : (
-    <CustomJazzIcon {...otherProps} />
+    <CustomJazzIcon className={`rounded-x4 ${className}`} {...otherProps} />
   );
 }
 

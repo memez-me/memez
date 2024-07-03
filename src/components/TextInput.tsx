@@ -7,6 +7,7 @@ type TextInputProps = {
   onMax?: (() => void) | undefined;
   placeholder?: string | undefined;
   className?: string;
+  inputClassName?: string;
   type?: HTMLInputTypeAttribute;
   disabled?: boolean;
   isError?: boolean;
@@ -24,6 +25,7 @@ function TextInput({
   onMax,
   placeholder,
   className,
+  inputClassName,
   type = 'text',
   disabled,
   isError,
@@ -44,6 +46,7 @@ function TextInput({
           enabled:hover:bg-main-grey enabled:hover:bg-opacity-50
           enabled:focus:bg-main-grey enabled:focus:bg-opacity-50 enabled:focus:border-main-accent enabled:focus:shadow-element enabled:focus:placeholder:text-transparent
           enabled:active:bg-main-grey enabled:active:bg-opacity-50 enabled:active:border-main-accent enabled:active:shadow-element enabled:active:placeholder:text-transparent
+          ${inputClassName}
         `}
         type={type}
         disabled={disabled}
@@ -57,7 +60,7 @@ function TextInput({
       />
       {onMax && (
         <button
-          className={`absolute right-x2 inset-y-0 my-auto h-x5 px-x2 py-x1 text-title rounded-x1 transition-all
+          className={`absolute right-x2 inset-y-0 my-auto ${isSmall ? 'h-x4 px-x1 py-x0.5 text-body-2 font-medium tracking-body' : 'h-x5 px-x2 py-x1 text-title'} rounded-x1 transition-all
             bg-main-black bg-opacity-30 font-medium text-main-accent
             disabled:text-main-light disabled:text-opacity-40
             enabled:hover:bg-main-light enabled:hover:bg-opacity-40

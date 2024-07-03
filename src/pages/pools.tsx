@@ -14,6 +14,7 @@ import { getLogs } from 'viem/actions';
 import { getEthPriceInUsd } from '../apis';
 import { CoinIcon } from '../components/icons';
 import { trimAddress } from '../utils';
+import Link from 'next/link';
 
 const wethAddress = '0xFC00000000000000000000000000000000000006' as Address;
 
@@ -233,7 +234,7 @@ export function Pools() {
                 symbol={'MEMEZ'}
                 address={memezAddress}
                 size={40}
-                src={'./icon.svg'}
+                src={'/icon.svg'}
               />
               MEMEZ price:{' '}
               {memezUsdPrice
@@ -243,7 +244,7 @@ export function Pools() {
           </div>
         </div>
         <div className="container overflow-x-auto">
-          <table className="w-full px-x3 border-collapse border-spacing-0 bg-main-black bg-opacity-30 rounded-x1">
+          <table className="w-full px-x3 border-collapse border-spacing-0 bg-main-black bg-opacity-30 backdrop-blur rounded-x1">
             <thead>
               <tr>
                 <th className="px-x3 py-x2 text-shadow text-title font-bold">
@@ -267,7 +268,9 @@ export function Pools() {
               {poolsData.map(({ poolAddress, tokenA, tokenB, tvl }, i) => (
                 <tr key={poolAddress}>
                   <td className="px-x3 py-x2 font-bold">{i + 1}</td>
-                  <td className="px-x3 py-x2">{trimAddress(poolAddress!)}</td>
+                  <td className="px-x3 py-x2" title={poolAddress}>
+                    {trimAddress(poolAddress!)}
+                  </td>
                   <td className="px-x3 py-x2">
                     <div className="flex flex-row items-center gap-x2 min-w-0 overflow-hidden">
                       <div className="flex flex-row shrink-0">
@@ -277,7 +280,7 @@ export function Pools() {
                           size={32}
                           src={
                             tokenA.address === memezAddress
-                              ? './icon.svg'
+                              ? '/icon.svg'
                               : undefined
                           }
                         />
@@ -288,15 +291,27 @@ export function Pools() {
                           size={32}
                           src={
                             tokenB.address === wethAddress
-                              ? './native.svg'
+                              ? '/native.svg'
                               : tokenB.address === memezAddress
-                                ? './icon.svg'
+                                ? '/icon.svg'
                                 : undefined
                           }
                         />
                       </div>
                       <span>
-                        {tokenA.symbol ?? '???'} / {tokenB.symbol ?? '???'}
+                        {tokenA.address !== memezAddress ? (
+                          <Link
+                            href={`/?coin=${tokenA.address}`}
+                            passHref
+                            rel="noreferrer"
+                            className="disabled:shadow hover:font-bold hover:text-main-light focus:text-main-light active:text-main-shadow"
+                          >
+                            {tokenA.symbol ?? '???'}
+                          </Link>
+                        ) : (
+                          tokenA.symbol ?? '???'
+                        )}{' '}
+                        / {tokenB.symbol ?? '???'}
                       </span>
                     </div>
                   </td>

@@ -3,7 +3,7 @@ import { MemezFactory$Type } from '../../../artifacts/contracts/MemezFactory.sol
 import MemezFactoryJSON from '../../../artifacts/contracts/MemezFactory.sol/MemezFactory.json';
 import { useMemo } from 'react';
 
-const factoryAddress = '0x4Cb7b915F150dC0AF306B9a01cA0401FF91be087' as Address;
+const factoryAddress = '0xB9FC95Dc0E6465788a17e545f7fd175b2805b6f7' as Address;
 
 export const useMemezFactoryConfig = () => {
   return useMemo(

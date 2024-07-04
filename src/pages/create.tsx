@@ -111,7 +111,7 @@ export function Create() {
   );
 
   const capError = useMemo(
-    () => (!cap || Number(cap) < 1 ? 'Invalid cap!' : null),
+    () => (!cap || Number(cap) <= 0 ? 'Invalid cap!' : null),
     [cap],
   );
   const factorError = useMemo(
@@ -623,21 +623,20 @@ export function Create() {
                 Error: {tokenInfoError || tokenomicsError || simulationError}
               </p>
             )}
-            <PrimaryButton
-              className={
-                step !== CreationStep.Finish ? 'absolute bottom-x4 z-10' : ''
-              }
-              disabled={
-                isAnyError || !data?.request || isPending || isConfirming
-              }
-              onClick={() => writeContract(data!.request)}
-            >
-              {isPending || isConfirming
-                ? 'Creating memecoin...'
-                : Number(initialBuyout || 0) > 0
-                  ? `Create memecoin [${initialBuyout.toString()} frxETH buyout]`
-                  : 'Create memecoin'}
-            </PrimaryButton>
+            {step === CreationStep.Finish && (
+              <PrimaryButton
+                disabled={
+                  isAnyError || !data?.request || isPending || isConfirming
+                }
+                onClick={() => writeContract(data!.request)}
+              >
+                {isPending || isConfirming
+                  ? 'Creating memecoin...'
+                  : Number(initialBuyout || 0) > 0
+                    ? `Create memecoin [${initialBuyout.toString()} frxETH buyout]`
+                    : 'Create memecoin'}
+              </PrimaryButton>
+            )}
           </div>
           {step !== CreationStep.Finish && (
             <div className="flex flex-col gap-x2 landscape:flex-1 landscape:px-x2 portrait:w-full max-w-[600px] landscape:max-h-full landscape:overflow-auto">

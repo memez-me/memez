@@ -3,7 +3,7 @@ import { MockMEMEZ$Type } from '../../../artifacts/contracts/MockMEMEZ.sol/MockM
 import MockMEMEZJSON from '../../../artifacts/contracts/MockMEMEZ.sol/MockMEMEZ.json';
 import { useMemo } from 'react';
 
-const memezAddress = '0xfE10E7DA183900Df7F6dd235E0Bc1567EA7a3490' as Address;
+const memezAddress = '0x1460541B607dE6b9a376138856cC60d7D2dEb726' as Address;
 
 export const useMemezConfig = () => {
   return useMemo(

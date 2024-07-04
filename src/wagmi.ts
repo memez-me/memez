@@ -12,28 +12,8 @@ const metadata = {
   icons: ['https://memez.me/icon.svg'],
 };
 
-const fraxtalVirtual = {
-  id: 252,
-  name: 'Fraxtal',
-  nativeCurrency: { name: 'Frax Ether', symbol: 'frxETH', decimals: 18 },
-  rpcUrls: {
-    default: {
-      http: [
-        'https://virtual.fraxtal.rpc.tenderly.co/2f735ee1-a1a0-4d37-bba6-9c855264c462',
-      ],
-    },
-  },
-
-  contracts: {
-    multicall3: {
-      address: '0xca11bde05977b3631167028862be2a173976ca11',
-    },
-  },
-} as any as typeof fraxtal;
-
 const chains = [
-  //fraxtal,
-  fraxtalVirtual,
+  fraxtal,
   ...(process.env.NODE_ENV === 'development' ? [fraxtalTestnet, hardhat] : []),
 ] as const;
 

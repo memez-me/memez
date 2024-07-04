@@ -22,7 +22,7 @@ export function Pools() {
   const client = useClient();
   const [ethUsdPrice, setEthUsdPrice] = useState<number>();
   const [blockToFetchFrom, setBlockToFetchFrom] = useState<bigint | BlockTag>(
-    'earliest',
+    6654447n,
   );
   const [listedMemecoins, setListedMemecoins] = useState<Address[]>([]);
 
@@ -172,7 +172,7 @@ export function Pools() {
           name: 'MemeCoinListed',
         }),
         strict: true,
-        fromBlock: fromBlock ?? 'earliest',
+        fromBlock: fromBlock ?? 6654447n,
       }).then((listedEvents) => {
         if (listedEvents.length > 0) {
           const blockNumber = _.last(listedEvents)!.blockNumber;

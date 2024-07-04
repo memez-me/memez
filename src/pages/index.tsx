@@ -1,7 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import PageHead from '../components/PageHead';
 import Link from 'next/link';
-import { useMemeCoinConfig, useMemezFactoryConfig } from '../hooks';
+import {
+  useMemeCoinConfig,
+  useMemezFactoryConfig,
+  useMemeCoinListingManagerConfig,
+} from '../hooks';
 import { Address, getAbiItem, isAddress, zeroAddress } from 'viem';
 import {
   useClient,
@@ -15,7 +19,6 @@ import { useRouter } from 'next/router';
 import { CoinInfo } from '../components/panels';
 import InfiniteScroll from 'react-infinite-scroll-component';
 import { LinkButton } from '../components/buttons';
-import { useMemeCoinListingManagerConfig } from '../hooks/contracts/useMemeCoinListingManager';
 import { getLogs } from 'viem/actions';
 
 const paginationLimit = 12;
@@ -80,7 +83,7 @@ export function Index() {
         name: 'MemeCoinListed',
       }),
       strict: true,
-      fromBlock: 'earliest',
+      fromBlock: 6654447n,
     }).then((listedEvents) => setListedCount(listedEvents.length * 2 + 1));
   }, [client, listingManagerConfig]);
 

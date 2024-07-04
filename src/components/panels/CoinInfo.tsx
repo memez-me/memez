@@ -83,7 +83,7 @@ export function CoinInfo({ memeCoinAddress, className }: CoinInfoProps) {
             memecoin: memeCoinConfig.address,
           },
           strict: true,
-          fromBlock: 'earliest',
+          fromBlock: 6654447n,
         });
 
         if (!deployedEvents.length) return;
@@ -176,7 +176,7 @@ export function CoinInfo({ memeCoinAddress, className }: CoinInfoProps) {
     if (!isAnyMintRetireLogsFetched || !isEventLongPolling) return;
     const intervalId = setInterval(() => {
       getMintRetireLogsAsync(
-        lastMintRetireBlock ? lastMintRetireBlock + 1n : 'earliest',
+        lastMintRetireBlock ? lastMintRetireBlock + 1n : 6654447n,
       )
         .then((res) =>
           setMintRetireLogs((old) =>

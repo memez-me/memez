@@ -11,12 +11,13 @@ import {
 import { useRouter } from 'next/router';
 import { Address, isAddress, zeroAddress } from 'viem';
 import { trimAddress } from '../utils';
-import { PrimaryButton } from '../components/buttons';
+import { PrimaryButton, SecondaryButton } from '../components/buttons';
 import TextInput from '../components/TextInput';
 import { useMemeCoinConfig, useMemezFactoryConfig } from '../hooks';
 import _ from 'lodash';
 import MemeCoinCard from '../components/MemeCoinCard';
 import { ProfileIcon } from '../components/icons';
+import { addBalance } from '../apis';
 
 type MemeCoinPartialData = {
   name: string;
@@ -42,6 +43,7 @@ export function Profile() {
   const [nickname, setNickname] = useState('');
   const [profilePicture, setProfilePicture] = useState('');
   const [isEditing, setIsEditing] = useState(false);
+  const [isFaucetPending, setIsFaucetPending] = useState(false);
 
   const memezFactoryConfig = useMemezFactoryConfig();
   const memeCoinConfig = useMemeCoinConfig(zeroAddress); // address will be overridden
@@ -198,6 +200,19 @@ export function Profile() {
                 {isCurrent &&
                   (isEditing ? (
                     <>
+                      <SecondaryButton
+                        disabled={isFaucetPending}
+                        onClick={() => {
+                          setIsFaucetPending(true);
+                          addBalance(address!, 10n ** 19n)
+                            .then(() => alert('Added!'))
+                            .finally(() => setIsFaucetPending(false));
+                        }}
+                      >
+                        {isFaucetPending
+                          ? 'Faucet: adding 10 frxETH...'
+                          : 'Faucet: add 10 frxETH'}
+                      </SecondaryButton>
                       <TextInput
                         value={nickname}
                         placeholder="Nickname"

@@ -4,7 +4,7 @@ import MemeCoinListingManagerJSON from '../../../artifacts/contracts/MemeCoinLis
 import { useMemo } from 'react';
 
 const listingManagerAddress =
-  '0x0A0b696Da96B52dCa9a85bb38074602d496966aC' as Address;
+  '0x84cF83ccd4A028a500632Cbb32A687Cc2aFfAAEA' as Address;
 
 export const useMemeCoinListingManagerConfig = () => {
   return useMemo(

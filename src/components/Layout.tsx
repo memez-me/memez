@@ -1,13 +1,20 @@
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Roboto_Mono } from 'next/font/google';
 import { useWeb3Modal, useWeb3ModalState } from '@web3modal/wagmi/react';
-import { useAccount } from 'wagmi';
-import { PrimaryButton, SecondaryButton } from './buttons';
+import { useAccount, useReadContract } from 'wagmi';
+import { LinkButton, PrimaryButton, SecondaryButton } from './buttons';
 import { trimAddress } from '../utils';
 import { useRouter } from 'next/router';
 import AnimatedLogo from './AnimatedLogo';
-import { ProfileIcon } from './icons';
+import { CoinIcon, ProfileIcon } from './icons';
+import { Address, formatEther, zeroAddress } from 'viem';
+import {
+  useFraxswapFactoryConfig,
+  useFraxswapPairConfig,
+  useMemezConfig,
+} from '../hooks';
+import { getEthPriceInUsd } from '../apis';
 
 const robotoMono = Roboto_Mono({
   subsets: ['latin'],
@@ -15,11 +22,57 @@ const robotoMono = Roboto_Mono({
   style: ['normal'],
 });
 
+const wethAddress = '0xFC00000000000000000000000000000000000006' as Address;
+
 export function Layout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { open } = useWeb3Modal();
   const { open: isOpen, loading } = useWeb3ModalState();
   const { address } = useAccount();
+  const [ethUsdPrice, setEthUsdPrice] = useState<number>();
+
+  const fraxswapFactoryConfig = useFraxswapFactoryConfig();
+  const fraxswapPairConfig = useFraxswapPairConfig(zeroAddress); // address will be overridden
+  const { address: memezAddress } = useMemezConfig();
+
+  const { data: pairAddress } = useReadContract({
+    ...fraxswapFactoryConfig,
+    functionName: 'getPair',
+    args: [memezAddress, wethAddress],
+  });
+
+  const { data: pairReserves } = useReadContract({
+    ...fraxswapPairConfig,
+    address: pairAddress,
+    functionName: 'getReserves',
+    query: {
+      enabled: !!pairAddress,
+      refetchInterval: 5000,
+    },
+  });
+
+  const [memezReserves, wethReserves] = useMemo(() => {
+    if (!pairReserves) return [1n, 1n];
+    const [reserve0, reserve1] = pairReserves as [bigint, bigint, number];
+    return BigInt(memezAddress) < BigInt(wethAddress)
+      ? [reserve0, reserve1]
+      : [reserve1, reserve0];
+  }, [memezAddress, pairReserves]);
+
+  const memezUsdPrice = useMemo(
+    () =>
+      !!pairReserves && !!ethUsdPrice
+        ? (ethUsdPrice * Number(formatEther(wethReserves))) /
+          Number(formatEther(memezReserves))
+        : null,
+    [pairReserves, memezReserves, wethReserves, ethUsdPrice],
+  );
+
+  useEffect(() => {
+    if (!ethUsdPrice) {
+      getEthPriceInUsd().then(setEthUsdPrice);
+    }
+  }, [ethUsdPrice]);
 
   return (
     <>
@@ -35,7 +88,40 @@ export function Layout({ children }: { children: ReactNode }) {
           >
             <AnimatedLogo />
           </Link>
-          <div className="flex flex-col gap-2 ml-auto">
+          <div className="flex flex-row portrait:hidden flex-1 justify-around mx-auto max-w-[640px]">
+            <LinkButton
+              className={`text-title ${router.route === '/' ? 'text-main-light text-shadow' : ''}`}
+              href="/"
+            >
+              Memecoins
+            </LinkButton>
+            <LinkButton
+              className={`text-title ${router.route === '/create' ? 'text-main-light text-shadow' : ''}`}
+              href="/create"
+            >
+              Create
+            </LinkButton>
+            <LinkButton
+              className={`text-title ${router.route === '/pools' ? 'text-main-light text-shadow' : ''}`}
+              href="/pools"
+            >
+              Pools
+            </LinkButton>
+          </div>
+          <div className="flex flex-row items-center gap-x2 text-title font-bold text-left">
+            <CoinIcon
+              className="inline"
+              symbol={'MEMEZ'}
+              address={memezAddress}
+              size={32}
+              src={'/icon.svg'}
+            />
+            MEMEZ:{' '}
+            {memezUsdPrice
+              ? '$' + Number(memezUsdPrice.toFixed(4))
+              : 'Loading...'}
+          </div>
+          <div className="flex flex-col gap-2">
             {address ? (
               <SecondaryButton
                 onClick={() => router.push(`/profile?address=${address}`)}

@@ -69,7 +69,7 @@ function MemeCoinCard({
             </h4>
             <p className="text-second-success text-body font-medium tracking-body text-nowrap overflow-hidden overflow-ellipsis">
               {cap > 0n
-                ? `Cap: ${Number(Number(formatEther(balance)).toFixed(3))}/${formatEther(cap)} ETH`
+                ? `Cap: ${Number(Number(formatEther(balance)).toFixed(3))}/${formatEther(cap)} frxETH`
                 : 'Already listed'}
             </p>
           </div>

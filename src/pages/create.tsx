@@ -268,9 +268,8 @@ export function Create() {
   );
 
   const chartOptions = useChartOptions({
-    chartTitle: 'Bonding curve',
-    titleX: 'Supply',
-    titleY: 'Price',
+    titleX: `Supply, ${symbol || 'Tokens'}`,
+    titleY: 'Price, frxETH',
     point: buyoutPoint,
   });
 
@@ -391,12 +390,14 @@ export function Create() {
                 <span className="font-bold text-title text-shadow leading-normal">
                   Description
                 </span>
-                {step === CreationStep.TokenInfo || !description ? (
+                {step === CreationStep.TokenInfo ? (
                   <span className="font-medium">
                     The description of your token
                   </span>
                 ) : (
-                  <span className="font-bold">{description}</span>
+                  <span className="font-bold">
+                    {description || <i>No description provided</i>}
+                  </span>
                 )}
               </div>
               <div className="flex flex-row gap-x1 lg:gap-x2 justify-between items-center">
@@ -459,10 +460,10 @@ export function Create() {
                 </span>
                 {step === CreationStep.Tokenomics || !cap ? (
                   <span className="font-medium">
-                    The cap of your token, ETH
+                    The cap of your token, frxETH
                   </span>
                 ) : (
-                  <span className="font-bold">{cap} ETH</span>
+                  <span className="font-bold">{cap} frxETH</span>
                 )}
               </div>
               <div className="flex flex-row gap-x1 lg:gap-x2 justify-between items-center">
@@ -471,10 +472,10 @@ export function Create() {
                 </span>
                 {step === CreationStep.Tokenomics ? (
                   <span className="font-medium">
-                    The initial buyout of your token, ETH
+                    The initial buyout of your token, frxETH
                   </span>
                 ) : (
-                  <span className="font-bold">{initialBuyout || 0} ETH</span>
+                  <span className="font-bold">{initialBuyout || 0} frxETH</span>
                 )}
               </div>
               <div className="flex flex-row gap-x1 lg:gap-x2 justify-between items-center">
@@ -519,7 +520,9 @@ export function Create() {
                 <span className="font-bold text-title text-shadow leading-normal">
                   Price formula
                 </span>
-                {step === CreationStep.Tokenomics || !!tokenomicsError ? (
+                {step === CreationStep.Tokenomics ||
+                !!factorError ||
+                !!powerError ? (
                   <div className="flex flex-row gap-x1 shrink-0 items-center font-medium">
                     <div className="flex flex-col items-center">
                       <div>F_N</div>
@@ -569,7 +572,7 @@ export function Create() {
                   </span>
                 ) : (
                   <span className="font-bold">
-                    {formatEther(maxSupply)} {symbol || ''}
+                    {formatEther(maxSupply)} {symbol || 'tokens'}
                   </span>
                 )}
               </div>
@@ -583,14 +586,17 @@ export function Create() {
                   </span>
                 ) : (
                   <span className="font-bold">
-                    {formatEther(buyoutSupply || 0n)} {symbol || ''}
+                    {formatEther(buyoutSupply || 0n)} {symbol || 'tokens'}
                   </span>
                 )}
               </div>
-              <div className="flex flex-col w-full h-[512px] justify-center items-stretch">
+              <h3 className="font-bold text-title text-shadow leading-normal">
+                Bonding curve
+              </h3>
+              <div className="flex flex-col w-full h-[512px] justify-center items-stretch p-x2 xl:p-x3 bg-main-black bg-opacity-10 backdrop-blur rounded-x1 content-center">
                 {chartData ? (
                   <ApexChart
-                    key={`${buyoutPoint?.text}`}
+                    key={`${symbol || 'Tokens'}-${buyoutPoint?.text}`}
                     options={chartOptions}
                     series={[{ data: chartData }]}
                     type="area"
@@ -629,7 +635,7 @@ export function Create() {
               {isPending || isConfirming
                 ? 'Creating memecoin...'
                 : Number(initialBuyout || 0) > 0
-                  ? `Create memecoin [${initialBuyout.toString()} ETH buyout]`
+                  ? `Create memecoin [${initialBuyout.toString()} frxETH buyout]`
                   : 'Create memecoin'}
             </PrimaryButton>
           </div>
@@ -757,7 +763,7 @@ export function Create() {
                       id="cap-input"
                       className="flex-1"
                       value={cap}
-                      placeholder="0.0 ETH"
+                      placeholder="0.0 frxETH"
                       type="number"
                       step={1}
                       max={1000}
@@ -781,7 +787,7 @@ export function Create() {
                       id="initial-buyout-input"
                       className="flex-1"
                       value={initialBuyout}
-                      placeholder="0.0 ETH"
+                      placeholder="0.0 frxETH"
                       type="number"
                       min={0}
                       step={0.01}

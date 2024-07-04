@@ -413,8 +413,8 @@ export function CoinInfo({ memeCoinAddress, className }: CoinInfoProps) {
   );
 
   const chartOptions = useChartOptions({
-    titleX: 'Supply',
-    titleY: 'Price',
+    titleX: `Supply, ${data?.[2]?.result || 'Tokens'}`,
+    titleY: 'Price, frxETH',
     point: currentProgressPoint,
   });
 
@@ -509,7 +509,7 @@ export function CoinInfo({ memeCoinAddress, className }: CoinInfoProps) {
                   symbol={data[2].result ?? '$$$'}
                   src={data[8].result}
                 />
-                <div className="flex flex-col flex-1 text-body font-medium tracking-body min-w-0 shrink-0 py-x1">
+                <div className="flex flex-col flex-auto text-body font-medium tracking-body min-w-0 shrink-0 py-x1">
                   <h3 className="font-bold text-title text-shadow">
                     {data[1].result}
                   </h3>
@@ -518,7 +518,7 @@ export function CoinInfo({ memeCoinAddress, className }: CoinInfoProps) {
                       Symbol: <span>{data[2].result}</span>
                     </p>
                     <p>
-                      Token supply:{' '}
+                      Supply:{' '}
                       <span>
                         {Number(
                           Number(formatEther(data[4].result ?? 0n)).toFixed(3),
@@ -535,7 +535,7 @@ export function CoinInfo({ memeCoinAddress, className }: CoinInfoProps) {
                               3,
                             ),
                           )}
-                          /{formatEther(data[3].result)} ETH
+                          /{formatEther(data[3].result)} frxETH
                         </span>
                       </p>
                     ) : (
@@ -622,7 +622,7 @@ export function CoinInfo({ memeCoinAddress, className }: CoinInfoProps) {
                   <TextInput
                     className="flex-1"
                     value={amount}
-                    placeholder={`0.0 ${isBuy ? 'ETH' : data[2].result}`}
+                    placeholder={`0.0 ${isBuy ? 'frxETH' : data[2].result}`}
                     type="number"
                     min={0}
                     step={0.001}
@@ -682,6 +682,7 @@ export function CoinInfo({ memeCoinAddress, className }: CoinInfoProps) {
                   <div className="w-full h-auto aspect-square p-x2 xl:p-x3 bg-main-black bg-opacity-10 backdrop-blur rounded-x1 content-center">
                     {chartData ? (
                       <ApexChart
+                        key={`${data?.[2]?.result || 'Tokens'}-${currentProgressPoint?.text}`}
                         options={chartOptions}
                         series={[{ data: chartData }]}
                         type="area"

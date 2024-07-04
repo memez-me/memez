@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import PageHead from '../components/PageHead';
 import TextInput from '../components/TextInput';
+import RangeInput from '../components/RangeInput';
 import { PrimaryButton, SecondaryButton } from '../components/buttons';
 import { useChartOptions, useMemezFactoryConfig } from '../hooks';
 import {
@@ -10,7 +11,12 @@ import {
 } from 'wagmi';
 import { formatEther, parseEther, parseEventLogs } from 'viem';
 import { useRouter } from 'next/router';
-import { getPrice, getSupply, isValidHttpUrl } from '../utils';
+import {
+  findRationalApproximation,
+  getPrice,
+  getSupply,
+  isValidHttpUrl,
+} from '../utils';
 import ApexChart from '../components/ApexChart';
 
 const chartIntervalsCount = 50;
@@ -33,10 +39,18 @@ export function Create() {
   const [twitterUrl, setTwitterUrl] = useState('');
   const [cap, setCap] = useState<string | number>('10');
   const [initialBuyout, setInitialBuyout] = useState<string | number>('');
-  const [curveFactorN, setCurveFactorN] = useState<string | number>('1000');
-  const [curveFactorD, setCurveFactorD] = useState<string | number>('');
-  const [curvePowerN, setCurvePowerN] = useState<string | number>('3');
-  const [curvePowerD, setCurvePowerD] = useState<string | number>('');
+  const [factor, setFactor] = useState<number>(1e-3);
+  const [power, setPower] = useState<number>(3);
+
+  const [curveFactorN, curveFactorD] = useMemo(() => {
+    const exp = Math.ceil(Math.abs(Math.log10(factor)));
+    const N = 10 ** (factor.toFixed(exp).startsWith('0.00') ? exp : 3);
+    return findRationalApproximation(factor, N);
+  }, [factor]);
+  const [curvePowerN, curvePowerD] = useMemo(
+    () => findRationalApproximation(power, 100),
+    [power],
+  );
 
   const memezFactoryConfig = useMemezFactoryConfig();
 
@@ -100,33 +114,13 @@ export function Create() {
     () => (!cap || Number(cap) < 1 ? 'Invalid cap!' : null),
     [cap],
   );
-  const curveFactorNError = useMemo(
-    () =>
-      !curveFactorN || Number(curveFactorN) < 0
-        ? 'Invalid curve factor numerator!'
-        : null,
-    [curveFactorN],
+  const factorError = useMemo(
+    () => (!factor || Number(factor) <= 0 ? 'Invalid curve factor!' : null),
+    [factor],
   );
-  const curveFactorDError = useMemo(
-    () =>
-      !!curveFactorD && Number(curveFactorD) <= 0
-        ? 'Invalid curve factor denominator!'
-        : null,
-    [curveFactorD],
-  );
-  const curvePowerNError = useMemo(
-    () =>
-      !curvePowerN || Number(curvePowerN) < 0
-        ? 'Invalid curve power numerator!'
-        : null,
-    [curvePowerN],
-  );
-  const curvePowerDError = useMemo(
-    () =>
-      !!curvePowerD && Number(curvePowerD) <= 0
-        ? 'Invalid curve power denominator!'
-        : null,
-    [curvePowerD],
+  const powerError = useMemo(
+    () => (!power || Number(power) <= 0 ? 'Invalid curve power!' : null),
+    [power],
   );
   const initialBuyoutError = useMemo(
     () =>
@@ -157,21 +151,8 @@ export function Create() {
   );
 
   const tokenomicsError = useMemo(
-    () =>
-      capError ||
-      curveFactorNError ||
-      curveFactorDError ||
-      curvePowerNError ||
-      curvePowerDError ||
-      initialBuyoutError,
-    [
-      capError,
-      curveFactorNError,
-      curveFactorDError,
-      curvePowerNError,
-      curvePowerDError,
-      initialBuyoutError,
-    ],
+    () => capError || factorError || powerError || initialBuyoutError,
+    [capError, factorError, powerError, initialBuyoutError],
   );
 
   const isValidationError = useMemo(
@@ -358,6 +339,13 @@ export function Create() {
     router.push(`/?coin=${deployedMemeCoinAddress}`);
   }, [deployedMemeCoinAddress, router]);
 
+  const formattedFactor = useMemo(() => {
+    const fixed = Number(factor)?.toFixed(3);
+    if (Number(fixed) > 0) return Number.parseFloat(fixed).toString();
+    const exp = Number(factor)?.toExponential(3);
+    return Number.parseFloat(exp).toString();
+  }, [factor]);
+
   return (
     <>
       <PageHead
@@ -498,7 +486,7 @@ export function Create() {
                     The factor of the bonding curve, given as a numerator and a
                     denominator
                   </span>
-                ) : curveFactorD && Number(curveFactorD) !== 1 ? (
+                ) : curveFactorD && curveFactorD !== 1 ? (
                   <div className="flex flex-col items-center font-bold">
                     <div>{curveFactorN}</div>
                     <hr className="w-full border border-main-accent" />
@@ -517,7 +505,7 @@ export function Create() {
                     The power of the bonding curve, given as a numerator and a
                     denominator
                   </span>
-                ) : curvePowerD && Number(curvePowerD) !== 1 ? (
+                ) : curvePowerD && curvePowerD !== 1 ? (
                   <div className="flex flex-col items-center font-bold">
                     <div>{curvePowerN}</div>
                     <hr className="w-full border border-main-accent" />
@@ -602,6 +590,7 @@ export function Create() {
               <div className="flex flex-col w-full h-[512px] justify-center items-stretch">
                 {chartData ? (
                   <ApexChart
+                    key={`${buyoutPoint?.text}`}
                     options={chartOptions}
                     series={[{ data: chartData }]}
                     type="area"
@@ -806,123 +795,70 @@ export function Create() {
                       }
                     />
                   </div>
-                  <div className="flex flex-row gap-x1 justify-stretch items-center">
-                    <div className="flex flex-col gap-x0.5 w-full">
+                  <div className="flex flex-col gap-x0.5 w-full">
+                    <div className="flex flex-row justify-between items-center">
                       <label
-                        className="font-bold text-title text-shadow leading-normal pl-x0.5"
-                        htmlFor="factor-n-input"
+                        className="font-bold text-headline-2 text-shadow leading-normal pl-x0.5"
+                        htmlFor="factor-input"
                       >
-                        Factor Numerator
+                        Factor
                       </label>
-                      <TextInput
-                        id="factor-n-input"
-                        className="flex-1"
-                        value={curveFactorN}
-                        placeholder="Factor numerator"
-                        type="number"
-                        step={1}
-                        min={0}
-                        max={1000000000}
-                        isSmall
-                        isError={!!curveFactorNError}
-                        onChange={(e) =>
-                          setCurveFactorN(
+                      <span
+                        className={`text-title font-bold ${!!factorError ? 'text-second-error' : ''}`}
+                      >
+                        {formattedFactor}
+                      </span>
+                    </div>
+                    <RangeInput
+                      id="factor-input"
+                      className="flex-1"
+                      value={factor}
+                      min={1e-9}
+                      max={1e9}
+                      isLogarithmic
+                      isError={!!factorError}
+                      onChange={(e) =>
+                        setFactor(
+                          Number(
                             e.target.value
                               .toString()
                               .replaceAll(/[^0-9.,]/g, ''),
-                          )
-                        }
-                      />
-                    </div>
-                    <div className="font-bold text-title leading-normal self-end py-[10px]">
-                      /
-                    </div>
-                    <div className="flex flex-col gap-x0.5 w-full">
-                      <label
-                        className="font-bold text-title text-shadow leading-normal pl-x0.5"
-                        htmlFor="factor-d-input"
-                      >
-                        Factor Denominator
-                      </label>
-                      <TextInput
-                        id="factor-d-input"
-                        className="flex-1"
-                        value={curveFactorD}
-                        placeholder="Factor denominator"
-                        type="number"
-                        step={1}
-                        min={1}
-                        max={1000000000}
-                        isSmall
-                        isError={!!curveFactorDError}
-                        onChange={(e) =>
-                          setCurveFactorD(
-                            e.target.value
-                              .toString()
-                              .replaceAll(/[^0-9.,]/g, ''),
-                          )
-                        }
-                      />
-                    </div>
+                          ),
+                        )
+                      }
+                    />
                   </div>
-                  <div className="flex flex-row gap-x1 justify-stretch items-center">
-                    <div className="flex flex-col gap-x0.5 w-full">
+                  <div className="flex flex-col gap-x0.5 w-full">
+                    <div className="flex flex-row justify-between items-center">
                       <label
-                        className="font-bold text-title text-shadow leading-normal pl-x0.5"
-                        htmlFor="power-n-input"
+                        className="font-bold text-headline-2 text-shadow leading-normal pl-x0.5"
+                        htmlFor="power-input"
                       >
-                        Power Numerator
+                        Power
                       </label>
-                      <TextInput
-                        id="power-n-input"
-                        className="flex-1"
-                        value={curvePowerN}
-                        placeholder="Power numerator"
-                        type="number"
-                        step={1}
-                        min={0}
-                        max={10}
-                        isSmall
-                        isError={!!curvePowerNError}
-                        onChange={(e) =>
-                          setCurvePowerN(
+                      <span
+                        className={`text-title font-bold ${!!powerError ? 'text-second-error' : ''}`}
+                      >
+                        {Number(power.toFixed(2))}
+                      </span>
+                    </div>
+                    <RangeInput
+                      id="power-input"
+                      className="flex-1"
+                      value={power}
+                      min={0.25}
+                      max={5}
+                      isError={!!powerError}
+                      onChange={(e) =>
+                        setPower(
+                          Number(
                             e.target.value
                               .toString()
                               .replaceAll(/[^0-9.,]/g, ''),
-                          )
-                        }
-                      />
-                    </div>
-                    <div className="font-bold text-title leading-normal self-end py-[10px]">
-                      /
-                    </div>
-                    <div className="flex flex-col gap-x0.5 w-full">
-                      <label
-                        className="font-bold text-title text-shadow leading-normal pl-x0.5"
-                        htmlFor="power-d-input"
-                      >
-                        Power Denominator
-                      </label>
-                      <TextInput
-                        id="power-d-input"
-                        className="flex-1"
-                        value={curvePowerD}
-                        placeholder="Power denominator"
-                        type="number"
-                        step={1}
-                        min={1}
-                        max={10}
-                        isSmall
-                        isError={!!curvePowerDError}
-                        onChange={(e) =>
-                          setCurvePowerD(
-                            e.target.value
-                              .toString()
-                              .replaceAll(/[^0-9.,]/g, ''),
-                          )
-                        }
-                      />
-                    </div>
+                          ),
+                        )
+                      }
+                    />
                   </div>
                   {!!tokenomicsError && (
                     <p className="text-second-error">

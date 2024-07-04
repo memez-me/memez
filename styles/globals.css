@@ -61,6 +61,78 @@ input[type=number] {
     box-shadow: none;
 }
 
+/* Range input start */
+/********** Range Input Styles **********/
+/*Range Reset*/
+input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    cursor: pointer;
+    position: relative;
+}
+
+/* Removes default focus */
+input[type="range"]:focus {
+    outline: none;
+}
+
+/***** Chrome, Safari, Opera and Edge Chromium styles *****/
+/* slider track */
+input[type="range"]::-webkit-slider-runnable-track {
+    background-color: #20573d;
+    border-radius: 8px;
+    height: 8px;
+}
+
+/* slider thumb */
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    margin-top: -12px;
+
+    /*custom styles*/
+    background-color: #92ffcb;
+    height: 32px;
+    width: 32px;
+    border-radius: 8px;
+    box-shadow: 0 0 8px 0 rgba(0, 255, 133, 0.50);
+}
+
+input[type="range"].error::-webkit-slider-thumb {
+    background-color: #FF532E;
+}
+
+/******** Firefox styles ********/
+/* slider track */
+input[type="range"]::-moz-range-track {
+    background-color: #20573d;
+    border-radius: 0.5rem;
+    height: 0.5rem;
+}
+
+/* slider thumb */
+input[type="range"]::-moz-range-thumb {
+    border: none;
+
+    /*custom styles*/
+    background-color: #92ffcb;
+    height: 32px;
+    width: 32px;
+    border-radius: 8px;
+    box-shadow: 0 0 8px 0 rgba(0, 255, 133, 0.50);
+}
+
+input[type="range"].error::-moz-range-thumb {
+    background-color: #FF532E;
+}
+
+input[type="range"]::-ms-fill-lower {
+    background: #92FFCB;
+}
+
+/* Range input end */
+
 @keyframes animation_S_1_flow_1 {
     from {
         d: path("M5.78919 9.40351 C5.78919 17.6374 42 10.3392 42 22.3158 C42 29.0526 33.1459 32 21.2838 32 C7.77567 32 0 26.9942 0 26.9942 L1.87297 24.0468 C3.29189 24.7953 11.0108 28.6784 21.0568 28.6784 C29.9108 28.6784 37.2892 26.9006 37.2892 22.5965 C37.2892 14.4561 1.02162 21.9415 1.02162 9.73099 C1.02162 3.36842 9.70541 0 20.8865 0 C33.3162 0 40.9216 4.58479 40.9216 4.58479 L38.9919 7.48538 C37.6297 6.83041 30.7054 3.32164 21.2838 3.32164 C12.3162 3.32164 5.78919 5.52047 5.78919 9.40351 Z");

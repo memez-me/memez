@@ -19,6 +19,7 @@ import {
   sendMessage,
   unlikeMessage,
 } from '../apis';
+import { AxiosError } from 'axios';
 
 type AccountPartialInfo = {
   nickname: string;
@@ -147,6 +148,9 @@ function Chat({ memecoin, className }: ChatProps) {
       setText('');
     } catch (e) {
       console.error(e);
+      if (e instanceof AxiosError && e.response?.data?.error) {
+        alert(e.response.data.error);
+      }
     } finally {
       setIsPending(false);
     }
@@ -185,6 +189,9 @@ function Chat({ memecoin, className }: ChatProps) {
         }));
       } catch (e) {
         console.error(e);
+        if (e instanceof AxiosError && e.response?.data?.error) {
+          alert(e.response.data.error);
+        }
       } finally {
         setIsPending(false);
       }

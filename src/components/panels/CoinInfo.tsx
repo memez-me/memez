@@ -42,6 +42,7 @@ import type { UTCTimestamp } from 'lightweight-charts';
 import { CoinIcon, ProfileIcon } from '../icons';
 import Chat from '../Chat';
 import { SwapInterface } from '../swap';
+import { BLOCK_TO_FETCH_EVENTS_FROM } from '../../constants';
 
 type CoinInfoProps = {
   memeCoinAddress: Address;
@@ -83,11 +84,11 @@ export function CoinInfo({ memeCoinAddress, className }: CoinInfoProps) {
             memecoin: memeCoinConfig.address,
           },
           strict: true,
-          fromBlock: 6654447n,
+          fromBlock: BLOCK_TO_FETCH_EVENTS_FROM,
         });
 
         if (!deployedEvents.length) return;
-        fromBlock = deployedEvents[0].blockNumber;
+        fromBlock = deployedEvents[0].blockNumber!;
       }
 
       return getLogs(client, {
@@ -176,7 +177,9 @@ export function CoinInfo({ memeCoinAddress, className }: CoinInfoProps) {
     if (!isAnyMintRetireLogsFetched || !isEventLongPolling) return;
     const intervalId = setInterval(() => {
       getMintRetireLogsAsync(
-        lastMintRetireBlock ? lastMintRetireBlock + 1n : 6654447n,
+        lastMintRetireBlock
+          ? lastMintRetireBlock + 1n
+          : BLOCK_TO_FETCH_EVENTS_FROM,
       )
         .then((res) =>
           setMintRetireLogs((old) =>

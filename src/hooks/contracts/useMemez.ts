@@ -1,9 +1,9 @@
-import { Address } from 'viem';
 import { MockMEMEZ$Type } from '../../../artifacts/contracts/MockMEMEZ.sol/MockMEMEZ';
 import MockMEMEZJSON from '../../../artifacts/contracts/MockMEMEZ.sol/MockMEMEZ.json';
 import { useMemo } from 'react';
+import { ADDRESSES } from '../../constants';
 
-const memezAddress = '0x8B130cB448c15Ec8a88E85869EfB428f56748471' as Address;
+const memezAddress = ADDRESSES.MEMEZ;
 
 export const useMemezConfig = () => {
   return useMemo(

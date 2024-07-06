@@ -8,13 +8,14 @@ import { trimAddress } from '../utils';
 import { useRouter } from 'next/router';
 import AnimatedLogo from './AnimatedLogo';
 import { CoinIcon, ProfileIcon } from './icons';
-import { Address, formatEther, zeroAddress } from 'viem';
+import { formatEther, zeroAddress } from 'viem';
 import {
   useFraxswapFactoryConfig,
   useFraxswapPairConfig,
   useMemezConfig,
 } from '../hooks';
 import { getEthPriceInUsd } from '../apis';
+import { ADDRESSES } from '../constants';
 
 const robotoMono = Roboto_Mono({
   subsets: ['latin'],
@@ -22,7 +23,7 @@ const robotoMono = Roboto_Mono({
   style: ['normal'],
 });
 
-const wethAddress = '0xFC00000000000000000000000000000000000006' as Address;
+const wethAddress = ADDRESSES.WETH;
 
 export function Layout({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -71,6 +72,12 @@ export function Layout({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!ethUsdPrice) {
       getEthPriceInUsd().then(setEthUsdPrice);
+    } else {
+      const interval = setInterval(
+        () => getEthPriceInUsd().then(setEthUsdPrice),
+        5000,
+      );
+      return () => clearInterval(interval);
     }
   }, [ethUsdPrice]);
 

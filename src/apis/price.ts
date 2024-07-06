@@ -16,7 +16,7 @@ export async function getPrice<
   return res?.data ?? {};
 }
 
-const cacheTimeMs = 60 * 60 * 1000; // 1 hour
+const cacheTimeMs = 10 * 60 * 1000; // 10 minutes
 
 let cachedEthUsdPrice: {
   price: number;

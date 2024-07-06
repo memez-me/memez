@@ -5,8 +5,8 @@
   "scripts": {
     "compile": "hardhat compile",
     "test": "hardhat test",
-    "dev": "next dev",
-    "build": "npm run compile && next build && next-sitemap",
+    "dev": "cross-env NEXT_PUBLIC_GIT_BRANCH=\"${CF_PAGES_BRANCH:-$(git branch --show-current)}\" next dev",
+    "build": "npm run compile && cross-env NEXT_PUBLIC_GIT_BRANCH=\"${CF_PAGES_BRANCH:-$(git branch --show-current)}\" next build && next-sitemap",
     "start": "next start",
     "lint": "next lint"
   },
@@ -27,6 +27,7 @@
     "@uniswap/v2-core": "^1.0.1",
     "@uniswap/v2-periphery": "^1.1.0-beta.0",
     "autoprefixer": "^10.4.19",
+    "cross-env": "^7.0.3",
     "dotenv": "^16.4.5",
     "eslint": "^8.57.0",
     "eslint-config-next": "^14.2.3",

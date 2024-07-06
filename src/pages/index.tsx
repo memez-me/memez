@@ -20,6 +20,7 @@ import { CoinInfo } from '../components/panels';
 import InfiniteScroll from 'react-infinite-scroll-component';
 import { LinkButton } from '../components/buttons';
 import { getLogs } from 'viem/actions';
+import { BLOCK_TO_FETCH_EVENTS_FROM } from '../constants';
 
 const paginationLimit = 12;
 
@@ -83,7 +84,7 @@ export function Index() {
         name: 'MemeCoinListed',
       }),
       strict: true,
-      fromBlock: 6654447n,
+      fromBlock: BLOCK_TO_FETCH_EVENTS_FROM,
     }).then((listedEvents) => setListedCount(listedEvents.length * 2 + 1));
   }, [client, listingManagerConfig]);
 

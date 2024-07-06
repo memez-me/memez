@@ -2,7 +2,6 @@ import React, { useCallback, useMemo, useState } from 'react';
 import SimpleTokensDropdown, { TokenInfo } from './SimpleTokensDropdown';
 import TextInput from '../TextInput';
 import {
-  Address,
   ContractFunctionExecutionError,
   erc20Abi,
   formatEther,
@@ -25,13 +24,14 @@ import {
 import { PrimaryButton } from '../buttons';
 import _ from 'lodash';
 import { VirtualFraxswapRouter } from '../../utils';
+import { ADDRESSES } from '../../constants';
 
 export type SwapInterfaceProps = {
   className?: string;
   tokens: Omit<TokenInfo, 'balance'>[];
 };
 
-const wethAddress = '0xFC00000000000000000000000000000000000006' as Address;
+const wethAddress = ADDRESSES.WETH;
 
 const multicallGetEthBalancePartialAbi = [
   {
@@ -77,7 +77,7 @@ function SwapInterface({ className, tokens }: SwapInterfaceProps) {
     contracts: tokens.flatMap(({ address }) => [
       address === zeroAddress
         ? ({
-            address: '0xcA11bde05977b3631167028862bE2a173976CA11' as Address,
+            address: ADDRESSES.MULTICALL3,
             abi: multicallGetEthBalancePartialAbi,
             functionName: 'getEthBalance',
             args: [userAddress],
@@ -90,7 +90,7 @@ function SwapInterface({ className, tokens }: SwapInterfaceProps) {
           } as const),
       address === zeroAddress
         ? ({
-            address: '0xcA11bde05977b3631167028862bE2a173976CA11' as Address,
+            address: ADDRESSES.MULTICALL3,
             abi: multicallGetEthBalancePartialAbi,
             functionName: 'getEthBalance',
             args: [userAddress],

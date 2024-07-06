@@ -15,14 +15,15 @@ import { getEthPriceInUsd } from '../apis';
 import { CoinIcon } from '../components/icons';
 import { trimAddress } from '../utils';
 import Link from 'next/link';
+import { ADDRESSES, BLOCK_TO_FETCH_EVENTS_FROM } from '../constants';
 
-const wethAddress = '0xFC00000000000000000000000000000000000006' as Address;
+const wethAddress = ADDRESSES.WETH;
 
 export function Pools() {
   const client = useClient();
   const [ethUsdPrice, setEthUsdPrice] = useState<number>();
   const [blockToFetchFrom, setBlockToFetchFrom] = useState<bigint | BlockTag>(
-    6654447n,
+    BLOCK_TO_FETCH_EVENTS_FROM,
   );
   const [listedMemecoins, setListedMemecoins] = useState<Address[]>([]);
 
@@ -172,7 +173,7 @@ export function Pools() {
           name: 'MemeCoinListed',
         }),
         strict: true,
-        fromBlock: fromBlock ?? 6654447n,
+        fromBlock: fromBlock ?? BLOCK_TO_FETCH_EVENTS_FROM,
       }).then((listedEvents) => {
         if (listedEvents.length > 0) {
           const blockNumber = _.last(listedEvents)!.blockNumber;

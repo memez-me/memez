@@ -1,5 +1,6 @@
 import { defaultWagmiConfig } from '@web3modal/wagmi/react/config';
-import { fraxtal, fraxtalTestnet, hardhat } from 'wagmi/chains';
+import { fraxtal } from 'wagmi/chains';
+import { ADDRESSES } from './constants';
 
 export const projectId = process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID;
 
@@ -26,15 +27,13 @@ const fraxtalVirtual = {
 
   contracts: {
     multicall3: {
-      address: '0xca11bde05977b3631167028862be2a173976ca11',
+      address: ADDRESSES.MULTICALL3,
     },
   },
 } as any as typeof fraxtal;
 
 const chains = [
-  //fraxtal,
-  fraxtalVirtual,
-  ...(process.env.NODE_ENV === 'development' ? [fraxtalTestnet, hardhat] : []),
+  process.env.NEXT_PUBLIC_GIT_BRANCH === 'main' ? fraxtal : fraxtalVirtual,
 ] as const;
 
 export const config = defaultWagmiConfig({

@@ -200,19 +200,21 @@ export function Profile() {
                 {isCurrent &&
                   (isEditing ? (
                     <>
-                      <SecondaryButton
-                        disabled={isFaucetPending}
-                        onClick={() => {
-                          setIsFaucetPending(true);
-                          addBalance(address!, 10n ** 19n)
-                            .then(() => alert('Added!'))
-                            .finally(() => setIsFaucetPending(false));
-                        }}
-                      >
-                        {isFaucetPending
-                          ? 'Faucet: adding 10 frxETH...'
-                          : 'Faucet: add 10 frxETH'}
-                      </SecondaryButton>
+                      {process.env.NEXT_PUBLIC_GIT_BRANCH !== 'main' && (
+                        <SecondaryButton
+                          disabled={isFaucetPending}
+                          onClick={() => {
+                            setIsFaucetPending(true);
+                            addBalance(address!, 10n ** 19n)
+                              .then(() => alert('Added!'))
+                              .finally(() => setIsFaucetPending(false));
+                          }}
+                        >
+                          {isFaucetPending
+                            ? 'Faucet: adding 10 frxETH...'
+                            : 'Faucet: add 10 frxETH'}
+                        </SecondaryButton>
+                      )}
                       <TextInput
                         value={nickname}
                         placeholder="Nickname"

@@ -8,6 +8,8 @@ const faucetAxiosApi = axios.create({
 });
 
 export async function addBalance(address: Address, amount: bigint) {
+  if (process.env.NEXT_PUBLIC_GIT_BRANCH === 'main')
+    throw new Error('No faucet available for mainnet!');
   await faucetAxiosApi.post(
     `/${process.env.NEXT_PUBLIC_TENDERLY_RPC_POSTFIX}`,
     {

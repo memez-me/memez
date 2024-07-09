@@ -583,7 +583,7 @@ export function CoinInfo({ memeCoinAddress, className }: CoinInfoProps) {
                 {Object.keys(links).length > 0 && (
                   <div className="flex flex-row flex-wrap gap-x0.5 justify-around ml-auto">
                     {Object.entries(links).map(([name, href]) => (
-                      <LinkButton key={href} href={href}>
+                      <LinkButton key={href} href={href} target="_blank">
                         {name}
                       </LinkButton>
                     ))}

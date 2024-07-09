@@ -16,6 +16,9 @@ import {
 } from '../hooks';
 import { getEthPriceInUsd } from '../apis';
 import { ADDRESSES } from '../constants';
+import GitHubSvg from '../assets/github.svg';
+import TwitterXSvg from '../assets/twitter_X.svg';
+import TelegramSvg from '../assets/telegram.svg';
 
 const robotoMono = Roboto_Mono({
   subsets: ['latin'],
@@ -114,6 +117,12 @@ export function Layout({ children }: { children: ReactNode }) {
             >
               Pools
             </LinkButton>
+            <LinkButton
+              className={`text-title ${router.route === '/about' ? 'text-main-light text-shadow' : ''}`}
+              href="/about"
+            >
+              About
+            </LinkButton>
           </div>
           <div className="flex flex-row items-center gap-x2 text-title font-bold text-left">
             <CoinIcon
@@ -150,6 +159,36 @@ export function Layout({ children }: { children: ReactNode }) {
           className="flex flex-col flex-1 p-4 md:p-8 overflow-auto"
         >
           {children}
+        </div>
+        <div className="flex landscape:flex-row portrait:flex-col justify-center items-center self-stretch gap-x2 md:gap-x4 px-x4 lg:px-x11 py-x1 rounded-t-[20px] bg-main-gray bg-opacity-50">
+          <span className="text-title font-medium">Follow us:</span>
+          <Link
+            className="hover:text-main-light active:text-main-shadow"
+            passHref
+            rel="noreferrer"
+            href="https://x.com/web3memez"
+            target="_blank"
+          >
+            <TwitterXSvg />
+          </Link>
+          <Link
+            className="hover:text-main-light active:text-main-shadow"
+            passHref
+            rel="noreferrer"
+            href="https://github.com/memez-me"
+            target="_blank"
+          >
+            <GitHubSvg />
+          </Link>
+          <Link
+            className="hover:text-main-light active:text-main-shadow"
+            passHref
+            rel="noreferrer"
+            href="https://t.me/memez_me"
+            target="_blank"
+          >
+            <TelegramSvg />
+          </Link>
         </div>
       </div>
       <svg

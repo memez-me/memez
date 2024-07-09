@@ -32,7 +32,7 @@ const fraxtalVirtual = {
   },
 } as any as typeof fraxtal;
 
-const chains = [
+export const chains = [
   process.env.NEXT_PUBLIC_GIT_BRANCH === 'main' ? fraxtal : fraxtalVirtual,
 ] as const;
 

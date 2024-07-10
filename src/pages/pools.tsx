@@ -34,26 +34,41 @@ export function Pools() {
   const { address: memezAddress } = useMemezConfig();
 
   const { data: symbolsData } = useReadContracts({
-    contracts: listedMemecoins.map(
+    contracts: listedMemecoins.flatMap(
       (address) =>
-        ({
-          ...memeCoinConfig,
-          address,
-          functionName: 'symbol',
-        }) as const,
+        [
+          {
+            ...memeCoinConfig,
+            address,
+            functionName: 'symbol',
+          } as const,
+          {
+            ...memeCoinConfig,
+            address,
+            functionName: 'image',
+          } as const,
+        ] as const,
     ),
     query: {
       enabled: listedMemecoins.length > 0,
     },
   });
 
-  const symbolsMapping = useMemo(
+  const symbolsAndImagesMapping = useMemo(
     () => ({
       ..._.fromPairs(
-        symbolsData?.map(({ result }, i) => [listedMemecoins[i], result]) ?? [],
+        _.chunk(symbolsData, 2).map(
+          ([{ result: symbol }, { result: image }], i) => [
+            listedMemecoins[i],
+            {
+              symbol,
+              image,
+            },
+          ],
+        ) ?? [],
       ),
-      [wethAddress]: 'wfrxETH',
-      [memezAddress]: 'MEMEZ',
+      [wethAddress]: { symbol: 'wfrxETH', image: '/native.svg' },
+      [memezAddress]: { symbol: 'MEMEZ', image: '/icon.svg' },
     }),
     [listedMemecoins, symbolsData, memezAddress],
   );
@@ -130,12 +145,12 @@ export function Pools() {
       poolAddress,
       tokenA: {
         address: pairsTokensAddresses[i][0],
-        symbol: symbolsMapping[pairsTokensAddresses[i][0]],
+        ...symbolsAndImagesMapping[pairsTokensAddresses[i][0]],
         reserve: formatEther(sortedReserves[i]?.[0] ?? 0n),
       },
       tokenB: {
         address: pairsTokensAddresses[i][1],
-        symbol: symbolsMapping[pairsTokensAddresses[i][1]],
+        ...symbolsAndImagesMapping[pairsTokensAddresses[i][1]],
         reserve: formatEther(sortedReserves[i]?.[1] ?? 0n),
       },
       tvl:
@@ -150,7 +165,7 @@ export function Pools() {
   }, [
     poolsAddresses,
     pairsTokensAddresses,
-    symbolsMapping,
+    symbolsAndImagesMapping,
     sortedReserves,
     ethUsdPrice,
     memezUsdPrice,
@@ -279,24 +294,14 @@ export function Pools() {
                           symbol={tokenA.symbol ?? '???'}
                           address={tokenA.address}
                           size={32}
-                          src={
-                            tokenA.address === memezAddress
-                              ? '/icon.svg'
-                              : undefined
-                          }
+                          src={tokenA.image}
                         />
                         <CoinIcon
                           className="-ml-x2"
                           symbol={tokenB.symbol ?? '???'}
                           address={tokenB.address}
                           size={32}
-                          src={
-                            tokenB.address === wethAddress
-                              ? '/native.svg'
-                              : tokenB.address === memezAddress
-                                ? '/icon.svg'
-                                : undefined
-                          }
+                          src={tokenB.image}
                         />
                       </div>
                       <span>

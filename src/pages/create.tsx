@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import PageHead from '../components/PageHead';
 import TextInput from '../components/TextInput';
 import RangeInput from '../components/RangeInput';
@@ -9,15 +9,25 @@ import {
   useWaitForTransactionReceipt,
   useWriteContract,
 } from 'wagmi';
-import { formatEther, parseEther, parseEventLogs } from 'viem';
+import {
+  ContractFunctionExecutionError,
+  formatEther,
+  parseEther,
+  parseEventLogs,
+  TransactionExecutionError,
+} from 'viem';
 import { useRouter } from 'next/router';
 import {
   findRationalApproximation,
+  getMemeCoinAddress,
   getPrice,
   getSupply,
   isValidHttpUrl,
 } from '../utils';
 import ApexChart from '../components/ApexChart';
+import { CoinIcon } from '../components/icons';
+import { uploadFile } from '../apis';
+import { AxiosError } from 'axios';
 
 const chartIntervalsCount = 50;
 
@@ -27,13 +37,16 @@ enum CreationStep {
   Finish,
 }
 
+const imageUrlPlaceholder =
+  'ipfs://FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF'; // URL will be overridden
+
 export function Create() {
   const router = useRouter();
   const [step, setStep] = useState(CreationStep.TokenInfo);
   const [name, setName] = useState('');
   const [symbol, setSymbol] = useState('');
   const [description, setDescription] = useState('');
-  const [image, setImage] = useState('');
+  const [image, setImage] = useState<File | undefined>(undefined);
   const [websiteUrl, setWebsiteUrl] = useState('');
   const [telegramUrl, setTelegramUrl] = useState('');
   const [twitterUrl, setTwitterUrl] = useState('');
@@ -41,6 +54,7 @@ export function Create() {
   const [initialBuyout, setInitialBuyout] = useState<string | number>('');
   const [factor, setFactor] = useState<number>(1e-3);
   const [power, setPower] = useState<number>(3);
+  const [isCreationPending, setIsCreationPending] = useState(false);
 
   const [curveFactorN, curveFactorD] = useMemo(() => {
     const exp = Math.ceil(Math.abs(Math.log10(factor)));
@@ -50,6 +64,13 @@ export function Create() {
   const [curvePowerN, curvePowerD] = useMemo(
     () => findRationalApproximation(power, 100),
     [power],
+  );
+
+  const memecoinAddress = useMemo(() => getMemeCoinAddress(symbol), [symbol]);
+
+  const imageSrc = useMemo(
+    () => (image ? URL.createObjectURL(image) : undefined),
+    [image],
   );
 
   const memezFactoryConfig = useMemezFactoryConfig();
@@ -71,6 +92,13 @@ export function Create() {
           ? 'Symbol is too long!'
           : null,
     [symbol],
+  );
+  const imageError = useMemo(
+    () =>
+      image && image.size > 5 * 1024 * 1024
+        ? 'Maximum image size is 5MB, image is too big!'
+        : null,
+    [image],
   );
   const descriptionError = useMemo(
     () => (description.length > 200 ? 'Description is too long!' : null),
@@ -136,6 +164,7 @@ export function Create() {
     () =>
       nameError ||
       symbolError ||
+      imageError ||
       descriptionError ||
       websiteUrlError ||
       telegramUrlError ||
@@ -143,6 +172,7 @@ export function Create() {
     [
       nameError,
       symbolError,
+      imageError,
       descriptionError,
       websiteUrlError,
       telegramUrlError,
@@ -290,7 +320,7 @@ export function Create() {
       name,
       symbol,
       description + (links.length > 0 ? `\nLinks:\n${links.join('\n')}` : ''),
-      image,
+      imageUrlPlaceholder,
     ],
     value: parseEther((initialBuyout || 0).toString()),
     query: {
@@ -298,7 +328,7 @@ export function Create() {
     },
   });
 
-  const { data: hash, writeContract, isPending } = useWriteContract();
+  const { data: hash, writeContractAsync, isPending } = useWriteContract();
 
   const {
     data: result,
@@ -345,6 +375,39 @@ export function Create() {
     return Number.parseFloat(exp).toString();
   }, [factor]);
 
+  const createMemecoin = useCallback(async () => {
+    setIsCreationPending(true);
+    const dataRequest = data!.request;
+    const imageIndex = dataRequest.args.lastIndexOf(imageUrlPlaceholder);
+    const args = [...dataRequest.args] as {
+      -readonly [key in keyof typeof dataRequest.args]: (typeof dataRequest.args)[key];
+    };
+    try {
+      if (!image) {
+        args[imageIndex] = '';
+      } else {
+        args[imageIndex] = (await uploadFile(image, `${symbol} Memecoin`)).url;
+      }
+      dataRequest.args = args;
+
+      await writeContractAsync(dataRequest);
+    } catch (e) {
+      if (e instanceof AxiosError && e.response?.data?.error) {
+        alert(e.response.data.error);
+      } else if (
+        e instanceof ContractFunctionExecutionError ||
+        e instanceof TransactionExecutionError
+      ) {
+        alert(e.shortMessage);
+      } else {
+        alert((e as Error)?.message ?? e);
+      }
+      console.error(e);
+    } finally {
+      setIsCreationPending(false);
+    }
+  }, [data, writeContractAsync, image, symbol]);
+
   return (
     <>
       <PageHead
@@ -366,6 +429,30 @@ export function Create() {
               <h2 className="font-bold text-headline-2 leading-normal text-center text-shadow">
                 Token info
               </h2>
+              <div className="flex flex-row gap-x2 lg:gap-x3">
+                <div className="flex flex-col gap-x1 md:py-x1">
+                  <span className="font-bold text-title text-shadow leading-normal">
+                    Icon
+                  </span>
+                  <span className="font-medium">
+                    The icon of your token: can be autogenerated if no image
+                    provided
+                  </span>
+                </div>
+                {(!symbolError || !!image) && !imageError ? (
+                  <CoinIcon
+                    className="shrink-0 min-h-[124px]"
+                    address={memecoinAddress}
+                    size={124}
+                    src={imageSrc}
+                    symbol={symbol}
+                  />
+                ) : (
+                  <div className="w-[124px] h-[124px] shrink-0 rounded-x4 bg-main-black bg-opacity-10 backdrop-blur content-center">
+                    <p className="text-center">No icon provided</p>
+                  </div>
+                )}
+              </div>
               <div className="flex flex-row gap-x1 lg:gap-x2 justify-between items-center">
                 <span className="font-bold text-title text-shadow leading-normal">
                   Name
@@ -626,11 +713,15 @@ export function Create() {
             {step === CreationStep.Finish && (
               <PrimaryButton
                 disabled={
-                  isAnyError || !data?.request || isPending || isConfirming
+                  isAnyError ||
+                  !data?.request ||
+                  isPending ||
+                  isConfirming ||
+                  isCreationPending
                 }
-                onClick={() => writeContract(data!.request)}
+                onClick={createMemecoin}
               >
-                {isPending || isConfirming
+                {isPending || isConfirming || isCreationPending
                   ? 'Creating memecoin...'
                   : Number(initialBuyout || 0) > 0
                     ? `Create memecoin [${initialBuyout.toString()} frxETH buyout]`
@@ -645,6 +736,23 @@ export function Create() {
                   <h2 className="font-bold text-headline-2 leading-normal text-center text-shadow">
                     Token info
                   </h2>
+                  <div className="flex flex-col gap-x0.5 w-full">
+                    <label
+                      className="font-bold text-headline-2 text-shadow leading-normal pl-x0.5"
+                      htmlFor="icon-input"
+                    >
+                      Icon
+                    </label>
+                    <TextInput
+                      id="icon-input"
+                      placeholder="Icon"
+                      isSmall
+                      type="file"
+                      accept="image/*"
+                      isError={!!imageError}
+                      onChange={(e) => setImage(e.target.files?.[0])}
+                    />
+                  </div>
                   <div className="flex flex-col gap-x0.5 w-full">
                     <label
                       className="font-bold text-headline-2 text-shadow leading-normal pl-x0.5"

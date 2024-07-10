@@ -39,8 +39,10 @@ function TextInput({
     <div className={`relative ${className}`}>
       <input
         id={id}
-        className={`p-x2 w-full ${isSmall ? 'h-x6' : 'h-x9'} bg-main-black bg-opacity-10 font-medium text-title text-main-accent placeholder:text-main-shadow border-2 border-main-shadow ${
+        className={`p-x2 w-full ${isSmall ? 'small h-x6' : 'h-x9'} bg-main-black bg-opacity-10 font-medium text-title text-main-accent placeholder:text-main-shadow border-2 border-main-shadow ${
           isError ? 'border-second-error' : 'enabled:hover:border-main-accent'
+        } ${
+          type === 'file' ? 'py-0 content-center' : ''
         } rounded-x1 backdrop-blur transition-all
           disabled:bg-main-black disabled:bg-opacity-30 disabled:border-main-gray disabled:text-main-light disabled:text-opacity-40 disabled:placeholder:text-main-gray
           enabled:hover:bg-main-grey enabled:hover:bg-opacity-50

@@ -261,12 +261,13 @@ export function CoinInfo({ memeCoinAddress, className }: CoinInfoProps) {
         address: memeCoinAddress,
         symbol: data?.[2]?.result ?? '$$$',
         name: data?.[1]?.result ?? 'MemeCoin',
+        src: data?.[8]?.result,
       },
       {
         address: memezAddress,
         symbol: 'MEMEZ',
         name: 'MEMEZ Coin',
-        src: './icon.svg',
+        src: '/icon.svg',
       },
       {
         address: zeroAddress,

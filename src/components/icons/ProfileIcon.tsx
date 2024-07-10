@@ -9,7 +9,7 @@ function ProfileIcon({ src, ...jazzIconProps }: ProfileIconProps) {
 
   return imageSrc ? (
     <Image
-      className={`rounded-full object-contain ${jazzIconProps.className}`}
+      className={`rounded-full object-cover ${jazzIconProps.className}`}
       src={imageSrc}
       width={jazzIconProps.size}
       height={jazzIconProps.size}

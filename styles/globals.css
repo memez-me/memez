@@ -130,8 +130,33 @@ input[type="range"].error::-moz-range-thumb {
 input[type="range"]::-ms-fill-lower {
     background: #92FFCB;
 }
-
 /* Range input end */
+
+/* File input start */
+input::file-selector-button {
+    @apply bg-main-black bg-opacity-30 rounded-x1 border-0 mr-x1 text-main-accent;
+}
+
+input:disabled::file-selector-button {
+    @apply text-main-light text-opacity-40;
+}
+
+input:hover:enabled::file-selector-button,
+input:focus:enabled::file-selector-button {
+    @apply bg-main-light bg-opacity-40;
+}
+
+input:active:enabled::file-selector-button {
+    @apply bg-main-black bg-opacity-30;
+}
+
+input::file-selector-button {
+    @apply h-x5 px-x2 py-x1 text-title;
+}
+input.small::file-selector-button {
+    @apply h-x4 px-x1 py-x0.5 text-body-2 font-medium tracking-body;
+}
+/* File input end */
 
 @keyframes animation_S_1_flow_1 {
     from {

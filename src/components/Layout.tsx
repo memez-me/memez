@@ -89,7 +89,7 @@ export function Layout({ children }: { children: ReactNode }) {
       <div
         className={`flex flex-col w-full h-full z-[1] ${robotoMono.className}`}
       >
-        <div className="flex landscape:flex-row portrait:flex-col items-center self-stretch gap-x2 px-x4 lg:px-x11 py-x2 rounded-b-[20px] bg-main-grey bg-opacity-50">
+        <div className="flex flex-row portrait:flex-col portrait:md:flex-row items-center self-stretch gap-x2 px-x4 lg:px-x6 xl:px-x11 py-x2 rounded-b-[20px] bg-main-grey bg-opacity-50">
           <Link
             href="/"
             passHref
@@ -160,7 +160,7 @@ export function Layout({ children }: { children: ReactNode }) {
         >
           {children}
         </div>
-        <div className="flex landscape:flex-row portrait:flex-col justify-center items-center self-stretch gap-x2 md:gap-x4 px-x4 lg:px-x11 py-x1 rounded-t-[20px] bg-main-gray bg-opacity-50">
+        <div className="flex flex-row flex-wrap justify-center items-center self-stretch gap-x2 md:gap-x4 px-x4 lg:px-x11 py-x1 rounded-t-[20px] bg-main-gray bg-opacity-50">
           <span className="text-title font-medium">Follow us:</span>
           <Link
             className="hover:text-main-light active:text-main-shadow"

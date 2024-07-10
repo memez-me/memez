@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { Address, Hex } from 'viem';
 
-const API_URL = 'https://pyrqgkqq4j.execute-api.us-east-1.amazonaws.com/';
+const API_URL = 'https://vs1w1flhb5.execute-api.us-east-1.amazonaws.com/';
 
 const chatAxiosApi = axios.create({
   baseURL: API_URL,
@@ -59,7 +59,9 @@ export function saveSignedMessage(
 }
 
 export async function getMessages(memecoin: Address, from: number = 0) {
-  const res = await chatAxiosApi.get<ChatMessage[]>(`/messages/${memecoin}`);
+  const res = await chatAxiosApi.get<ChatMessage[]>(
+    `/messages/${memecoin}?from=${from}`,
+  );
   return res?.data ?? [];
 }
 

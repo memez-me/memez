@@ -313,7 +313,7 @@ export function Index() {
           </div>
         )}
         <div className="flex flex-row w-full justify-center overflow-hidden">
-          <div id="cards-container" className="h-full shrink-0 overflow-auto">
+          <div id="cards-container" className="h-full overflow-auto">
             <InfiniteScroll
               key={!!memeCoinAddress + ''}
               className={`grid grid-cols-1 ${!!memeCoinAddress ? 'gap-x1' : 'xl:grid-cols-2 2xl:grid-cols-3 auto-rows-fr gap-x3'} px-x2 py-x0.5 max-h-full`}

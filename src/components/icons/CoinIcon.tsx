@@ -164,7 +164,7 @@ function CoinIcon({ src, className, ...otherProps }: CoinIconProps) {
     <>
       {!!imageSrc && (
         <Image
-          className={`rounded-x4 object-cover ${className}`}
+          className={`rounded-x4 aspect-square object-cover ${className}`}
           src={imageSrc}
           crossOrigin="anonymous"
           width={otherProps.size}
